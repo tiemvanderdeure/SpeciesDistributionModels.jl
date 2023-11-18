@@ -1,0 +1,13 @@
+name = "SpeciesDistributionModels"
+uuid = "3ef73bbf-0321-4d3b-9a2e-5fbebc8e35da"
+authors = ["Tiem van der Deure <tvd@sund.ku.dk>", "Rafael Schouten <rafaelschouten@gmail.com>"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
