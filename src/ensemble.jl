@@ -116,7 +116,7 @@ function sdm(
 
     trained_models = mapreduce(vcat, keys(resamplers_)) do resampler_key
         resampler = resamplers_[resampler_key]
-        folds = MLJ.MLJBase.train_test_pairs(resampler, 1:1100, response_values) ## get indices
+        folds = MLJ.MLJBase.train_test_pairs(resampler, 1:n_total, response_values) ## get indices
         mapreduce(vcat, keys(models_)) do model_key
             model = models_[model_key]
             map(enumerate(folds)) do (f, (train, test))
