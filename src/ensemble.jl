@@ -32,7 +32,8 @@ function select(ensemble::SDMensemble, indices::Vector{Int})
         ensemble.n_presences, 
         ensemble.n_absences, 
         ensemble.models[model_keys], 
-        ensemble.resamplers[resampler_keys]
+        ensemble.resamplers[resampler_keys],
+        ensemble.data
     )
 end
 
@@ -59,7 +60,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
     aucs = auc_by_model(ensemble)
     data = hcat(collect(keys(ensemble.models)), aucs)
     header = (["model_key", "auc"])
-    pretty_table(io, data; header = header)
+    PrettyTables.pretty_table(io, data; header = header)
 
     #println(io, "model keys: ", keys(ensemble.models))
     #show(io, mime, Tables.rows(ensemble))
@@ -75,7 +76,7 @@ function givenames(models::Vector)
     names = map(models) do model
         replace(MLJ.name(model), r"Classifier$"=>"")
     end
-    for (name, n) in countmap(names)
+    for (name, n) in StatsBase.countmap(names)
         if n > 1
             names[names .== name] = name .* "_" .* string.(1:n)
         end
