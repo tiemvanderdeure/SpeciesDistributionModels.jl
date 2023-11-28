@@ -48,49 +48,49 @@ function interactive_evaluation(ensemble)
     controls = fig[1,2] = GridLayout()
     plots = fig[1,1] = GridLayout()
     ax = Axis(plots[1,1]; limits = (0, 1.01, 0, 1.01))
-    hidespines!(ax, :t, :r)
+    Makie.hidespines!(ax, :t, :r)
 
     funcs = [Sens(),Spec(), ROC(), TSS()]
-    dropdown = Menu(controls[1,1],
+    dropdown = Makie.Menu(controls[1,1],
         options = zip(["Sensitivity", "Specificity", "ROC", "TSS"], funcs),
         default = "ROC", tellheight = false)
 
-    all_models_toggle = Toggle(fig, active = false)
-    controls[2, 1] = hgrid!(all_models_toggle, Label(fig, "Show individuals models"))
+    all_models_toggle = Makie.Toggle(fig, active = false)
+    controls[2, 1] = Makie.hgrid!(all_models_toggle, Label(fig, "Show individuals models"))
 
-    toggles = [Toggle(fig, active = true) for i in 1:length(idx_by_model)]
-    labels = [Label(fig, String(key)) for key in keys(idx_by_model)]
+    toggles = [Makie.Toggle(fig, active = true) for i in 1:length(idx_by_model)]
+    labels = [Makie.Label(fig, String(key)) for key in keys(idx_by_model)]
 
-    Label(controls[3, 1], "Select models"; font = :bold)
-    controls[4, 1] = grid!(hcat(toggles, labels), tellheight = false)
+    Makie.Label(controls[3, 1], "Select models"; font = :bold)
+    controls[4, 1] = Makie.grid!(hcat(toggles, labels), tellheight = false)
 
     # Data to plot
     plot_data_avg = map(eachindex(rates_by_model)) do idx
-        x = lift(s -> xdata(s, rates_by_model[idx]), dropdown.selection)
-        y = lift(s -> ydata(s, rates_by_model[idx]), dropdown.selection)
+        x = Makie.lift(s -> xdata(s, rates_by_model[idx]), dropdown.selection)
+        y = Makie.lift(s -> ydata(s, rates_by_model[idx]), dropdown.selection)
         return(x, y)
     end
 
     plot_data_all = map(eachindex(all_rates)) do idx
-        x = lift(f -> xdata(f, all_rates[idx]), dropdown.selection)
-        y = lift(f -> ydata(f, all_rates[idx]), dropdown.selection)
+        x = Makie.lift(f -> xdata(f, all_rates[idx]), dropdown.selection)
+        y = Makie.lift(f -> ydata(f, all_rates[idx]), dropdown.selection)
         return(x, y)
     end
 
-    ls_average = [lines!(ax, d[1], d[2], color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 3) for (i, d) in enumerate(plot_data_avg)]
+    ls_average = [Makie.lines!(ax, d[1], d[2], color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 3) for (i, d) in enumerate(plot_data_avg)]
     ls_members = [
         [
-            lines!(ax, plot_data_all[j][1], plot_data_all[j][2];
+            Makie.lines!(ax, plot_data_all[j][1], plot_data_all[j][2];
             color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 1) for j in idxs
         ] for (i, idxs) in enumerate(idx_by_model)
     ]
 
     map(ls_average, ls_members, toggles) do line, lines, toggle
-        connect!(line.visible, toggle.active)
-        lines_active = @lift $(toggle.active) & $(all_models_toggle.active)
+        Makie.connect!(line.visible, toggle.active)
+        lines_active = lift((t, t2) -> t & t2, (toggle.active), (all_models_toggle.active))
 
         for l in lines
-            connect!(l.visible, lines_active)
+            Makie.connect!(l.visible, lines_active)
         end
     end
 
