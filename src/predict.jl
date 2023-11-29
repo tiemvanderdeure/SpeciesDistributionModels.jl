@@ -13,13 +13,13 @@ function predict(ensemble::SDMensemble, data::Rasters.RasterStack)
 
     # Check dimensions match and variables exist
     data1 = data[first(preds)]
-    dims1 = dims(data1)
-    if ~all(p -> dims(data[p]) == dims1, preds) error("Dimensions of data do not match") end
+    dims1 = Rasters.dims(data1)
+    if ~all(p -> Rasters.dims(data[p]) == dims1, preds) error("Dimensions of data do not match") end
 
     # Find missing values -- maybe add this as method to RasterStack?
     missings = falses(dims1)
     for l in data[preds]
-        missings .|= l .=== missingval(l)
+        missings .|= l .=== Rasters.missingval(l)
     end
 
     # Take non-missing data and convert to namedtuple of vectors
@@ -29,11 +29,11 @@ function predict(ensemble::SDMensemble, data::Rasters.RasterStack)
     @time data_ = NamedTuple{Tuple(ensemble.predictors)}([vec(data[pre]) for pre in preds])
 
     # Allocate Raster to save results
-    outraster = Raster(fill(NaN, (dims1..., Rasters.Band(machine_keys(ensemble)))); missingval = NaN, crs = crs(data1))
+    outraster = Raster(fill(NaN, (dims1..., Rasters.Band(machine_keys(ensemble)))); missingval = NaN, crs = Rasters.crs(data1))
 
     for (i, mach) in enumerate(machines(ensemble))
         # predict each machine and get the probability of true
-        @views outraster[Band(i)][.~missings] .= MLJ.predict(mach, data_).prob_given_ref[2]
+        @views outraster[Rasters.Band(i)][.~missings] .= MLJ.predict(mach, data_).prob_given_ref[2]
     end
 
     return outraster
