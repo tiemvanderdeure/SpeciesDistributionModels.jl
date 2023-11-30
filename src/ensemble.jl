@@ -95,20 +95,21 @@ function sdm(
     absence, 
     models, 
     resamplers;
-    var_keys::Vector{Symbol} = [key for key in keys(absence[1]) if in(key, keys(presences[1]))],
-    scitypes::Vector{DataType} = [MLJ.scitype(presences[1][key]) for key in var_keys],
+    var_keys::Vector{Symbol} = [key for key in Tables.schema(absence).names if in(key, Tables.schema(presences).names)],
+    scitypes::Vector{DataType} = [MLJ.scitype(Tables.schema(presences).types) for key in var_keys],
     verbosity::Int = 0
     )
     
     @assert Tables.istable(presences) && Tables.istable(absence)
 
-    n_presence = length(presences) ##
-    n_absence = length(absence)
+    n_presence = length(Tables.rows(presences)) ##
+    n_absence = length(Tables.rows(absence))
     n_total = n_presence + n_absence
 
-    predictor_values = ([presences; absence])
+    # merge presence and absence data into one namedtuple of vectors
+    predictor_values = NamedTuple{Tuple(var_keys)}([[Tables.columns(absence)[var]; Tables.columns(presences)[var]] for var in var_keys])
     response_values = CategoricalArray(
-        [trues(n_presence); falses(n_absence)]; 
+        [falses(n_absence); trues(n_presence)]; 
         levels = [false, true], ordered = true)
 
     models_ = givenames(models)
