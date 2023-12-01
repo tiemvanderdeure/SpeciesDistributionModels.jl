@@ -18,7 +18,7 @@ end
 function shap(ensemble; parallelism = Shapley.CPUThreads(), n_samples = 50)
     shapvalues = map(ensemble.trained_models) do model
         Shapley.shapley(
-            x -> Float64.(MLJ.pdf.(MLJ.predict(model.machine, x), true)), # some ml models return float32s - where to handle this?
+            x -> Float64.(MLJBase.pdf.(MLJBase.predict(model.machine, x), true)), # some ml models return float32s - where to handle this?
             Shapley.MonteCarlo(parallelism, n_samples), 
             ensemble.data.predictor
         )

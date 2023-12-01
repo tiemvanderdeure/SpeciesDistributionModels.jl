@@ -4,7 +4,7 @@ function predict(ensemble::SDMensemble, data::NamedTuple)
 
     map(machines(ensemble)) do mach
         # predict each machine and get the probability of true
-        Float64.(MLJ.predict(mach, data_).prob_given_ref[2])
+        Float64.(MLJBase.predict(mach, data_).prob_given_ref[2])
     end
 end
 
@@ -33,7 +33,7 @@ function predict(ensemble::SDMensemble, data::Rasters.RasterStack)
 
     for (i, mach) in enumerate(machines(ensemble))
         # predict each machine and get the probability of true
-        @views outraster[Rasters.Band(i)][.~missings] .= MLJ.predict(mach, data_).prob_given_ref[2]
+        @views outraster[Rasters.Band(i)][.~missings] .= MLJBase.predict(mach, data_).prob_given_ref[2]
     end
 
     return outraster
@@ -41,7 +41,7 @@ end
 
 function predict(ensemble::SDMensemble, rows::Symbol)
     y_hat_y = map(ensemble.trained_models) do model
-        y_hat = MLJ.predict(model.machine, rows = model[rows])
+        y_hat = MLJBase.predict(model.machine, rows = model[rows])
         y = ensemble.data.response[model[rows]]
         return (;y_hat, y)
     end
