@@ -53,7 +53,7 @@ function select(
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
-    println(io, "SDMensemble with $(length(ensemble)) models")
+    println(io, "SDMensemble with $(Base.length(ensemble)) models")
 
     println(io, "Model performance:")
 
@@ -102,8 +102,8 @@ function sdm(
     
     @assert Tables.istable(presences) && Tables.istable(absence)
 
-    n_presence = length(Tables.rows(presences)) ##
-    n_absence = length(Tables.rows(absence))
+    n_presence = Base.length(Tables.rows(presences)) ##
+    n_absence = Base.length(Tables.rows(absence))
     n_total = n_presence + n_absence
 
     # merge presence and absence data into one namedtuple of vectors
