@@ -93,3 +93,45 @@ function interactive_evaluation(ensemble)
 
     return fig #should return FigureAxisPlot somehow?
 end
+
+# Plot output from shapley
+function interactive_response_curves(shapley::SDMshapley)
+    f = Figure()
+    ax = Axis(f[1,1], ylabel = "shapley value", xlabel = "variable value")
+
+    preds = shapley.ensemble.predictors
+
+    var_menu = Makie.Menu(f[1, 2], options = zip(String.(preds), preds), tellheight = false, tellwidth = true, width = 100)
+    indices = Makie.Observable(1:length(shapley))
+
+    var_indices = lift((x,y) -> (x,y), var_menu.selection, indices)
+
+    function update(var, indices)
+        ys[] = collect(Base.Iterators.flatten(shap[var] for shap in shapley.values[indices]))
+        xs[] = repeat(shapley.ensemble.data.predictor[var], size(indices, 1))
+
+        us[] = range(extrema(xs[])...; length = 100)
+
+        smooth_model = Loess.loess(xs[], ys[]; span = Statistics.std(xs[])/2, degree = 2)
+        res_model = Loess.loess(xs[], abs.(Loess.residuals(smooth_model)); span = Statistics.std(xs[])/2, degree = 2)
+
+        smooth_ys[] = Loess.predict(smooth_model, us[])
+        res_ys = Loess.predict(res_model, us[])
+        lower_ys[] = smooth_ys[] .- res_ys
+        upper_ys[] = smooth_ys[] .+ res_ys
+
+        Makie.reset_limits!(ax)
+    end
+
+    ys, xs, us, smooth_ys, lower_ys, upper_ys = (Makie.Observable{Vector{Float64}}([]) for i in 1:6)
+
+    update(var_menu.selection[], indices[])
+
+    scatter!(xs, ys, markersize = 3)
+    lines!(ax, us, smooth_ys, linewidth = 7, color = :black, alpha = 1)
+    Makie.band!(ax, us, lower_ys, upper_ys, alpha = 0.5)
+
+    Makie.on(x -> update(x...), var_indices)
+
+    f
+end

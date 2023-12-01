@@ -2,15 +2,17 @@ module SpeciesDistributionModels
 
 using MLJ 
 
-import GLM, Tables, StatsBase, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley
+import Tables, StatsBase, Statistics
+import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
 
 using Rasters: Raster, RasterStack
 
-using Makie: Toggle, Label, lines!, Axis, Figure, GridLayout, lift
+using Makie: Toggle, Label, scatter!, lines!, Axis, Figure, GridLayout, lift
 
 import CategoricalArrays.CategoricalArray
 
-export SDMensemble, predict, sdm, select, machines, machine_keys, shap, interactive_evaluation
+export SDMensemble, predict, sdm, select, machines, machine_keys, shap, 
+    interactive_evaluation, interactive_response_curves
 
 include("models.jl")
 include("ensemble.jl")
