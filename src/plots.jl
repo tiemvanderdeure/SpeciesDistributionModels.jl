@@ -1,6 +1,3 @@
-import SpeciesDistributionModels as SDM
-using SpeciesDistributionModels, MLJ
-
 function classification_rates(scores, y)
     fpr, tpr, thresholds = roc_curve(scores, y)
     tnr = 1. .- fpr
