@@ -4,8 +4,6 @@ using MLJ
 
 import GLM, Tables, StatsBase, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley
 
-using Makie: Toggle, Label, lines!, Axis, Figure, GridLayout, lift, Shapley, Makie
-
 using Rasters: Raster, RasterStack
 
 using Makie: Toggle, Label, lines!, Axis, Figure, GridLayout, lift
