@@ -1,9 +1,10 @@
-# Load in models and wrap them to hide @load
+# Load in models and wrap them to hide the interfaces
+# Do we want to get ride of these as dependencies?
 
-const lbc = MLJ.@load LinearBinaryClassifier pkg=GLM verbosity = 0
-const etc = MLJ.@load EvoTreeClassifier pkg=EvoTrees verbosity = 0
-const rf = MLJ.@load RandomForestClassifier pkg=DecisionTree verbosity = 0
+using MLJGLMInterface: LinearBinaryClassifier
+using EvoTrees: EvoTreeClassifier
+using MLJDecisionTreeInterface: RandomForestClassifier
 
-linear_model(; kw...) = lbc(; kw...)
-boosted_regression_tree(; kw...) = etc(; kw...)
-random_forest(; kw...) = rf(; kw...)
+linear_model = LinearBinaryClassifier
+boosted_regression_tree = EvoTreeClassifier
+random_forest = RandomForestClassifier

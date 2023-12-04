@@ -1,5 +1,5 @@
 function classification_rates(scores, y)
-    fpr, tpr, thresholds = roc_curve(scores, y)
+    fpr, tpr, thresholds = StatisticalMeasures.roc_curve(scores, y)
     tnr = 1. .- fpr
     fnr = 1. .- tpr
 

@@ -1,9 +1,7 @@
 module SpeciesDistributionModels
 
-using MLJ 
-
 import Tables, StatsBase, Statistics
-import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
+import MLJBase, StatisticalMeasures, GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
 
 using Rasters: Raster, RasterStack
 
