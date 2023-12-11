@@ -1,4 +1,17 @@
-struct SDMevaluation
+struct SDMmachineEvaluation
+    ensemble::SDMensemble
+    measures
+    results
+end
+
+struct SDMgroupEvaluation
+    ensemble::SDMensemble
+    measures
+    results
+end
+
+struct SDMensembleEvaluation
+    groupevaluations::SDMgroupEvaluation
     ensemble::SDMensemble
     measures
     results
@@ -6,7 +19,27 @@ end
 
 ScoreType = NamedTuple{(:score, :threshold), Tuple{Float64, Union{Missing, Float64}}}
 
-function evaluate_ensemble(ensemble::SDMensemble, measures = (; auc, log_loss, kappa))
+function ensemble_auc(ensemble)
+    mapreduce(vcat, keys(ensemble.models)) do key
+        mean([model.auc for model in ensemble.trained_models if model.model_key == key])
+    end
+end
+
+function auc(ensemble)
+    mapreduce(vcat, keys(ensemble.models)) do key
+        Statistics.mean([model.auc for model in ensemble.trained_models if model.model_key == key])
+    end
+end
+
+
+
+function evaluate_ensemble(
+    ensemble::SDMensemble, 
+    measures = (; 
+        auc = StatisticalMeasures.auc, 
+        log_loss = StatisticalMeasures.log_loss, 
+        kappa = StatisticalMeasures.kappa)
+    )
 
     results = map((train = :train, test = :test)) do rows
 
@@ -40,9 +73,12 @@ function evaluate_ensemble(ensemble::SDMensemble, measures = (; auc, log_loss, k
     return SDMevaluation(ensemble, measurements, results)
 end
 
-function getmeasure(evaluation::SDMevaluation, measure = :auc; train_or_test = :test)
+function getmeasure(evaluation::SDMensembleEvaluation, measure = :auc; train_or_test = :test)
     mapreduce(vcat, evaluation.results[:test]) do result
         result[measure]
     end
 end
 
+
+using MLJBase
+folds = MLJBase.train_test_pairs(MLJBase.CV(; nfolds = 6, shuffle = true), 1:400, rand(400)) ## get indices

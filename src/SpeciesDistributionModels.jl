@@ -16,6 +16,8 @@ include("models.jl")
 include("ensemble.jl")
 include("predict.jl")
 include("explain.jl")
+include("evaluate.jl")
 include("plots.jl")
+
 
 end
