@@ -19,8 +19,14 @@ end
 # Ensembles have multiple groups with potentially different models and different resamplers, but identical data
 struct SDMensemble <: AbstractVector{SDMgroup}
     groups::Vector{SDMgroup} # Contains the trained models
-    data
 end
+
+SDMgroupOrEnsemble = Union{SDMgroup, SDMensemble}
+
+# Rather than storing it in ensemble, access it like this? It looks like args stores exactly the data as it is given to the machine
+data(mach::SDMmachine) = (predictor = mach.machine.args[1].data, response = mach.machine.args[2].data)
+data(e::SDMgroupOrEnsemble) = data(first(sdm_machines(e)))
+
 
 #Base.getproperty(ensemble::SDMensemble, key::Symbol) = getproperty.(ensemble, key)
 # getproperty directly into models???
@@ -29,65 +35,101 @@ Base.getindex(ensemble::SDMensemble, i) = ensemble.groups[i]
 Base.getindex(group::SDMgroup, i) = group.sdm_machines[i]
 Base.size(ensemble::SDMensemble) = size(ensemble.groups)
 Base.size(group::SDMgroup) = size(group.sdm_machines)
+n_machines(ensemble::SDMensemble) = mapreduce(group -> length(group.sdm_machines), +, ensemble)
 
-#trained_models(ensemble) = getfield(ensemble, :trained_models)
-machines(ensemble::SDMensemble) = mapreduce(group -> group.sdm_machines.machine, vcat, ensemble.group)
-sdm_machines(ensemble::SDMensemble) = mapreduce(group -> group.sdm_machines, vcat, ensemble.group)
-#machine_keys(ensemble::SDMensemble) = getfield.(ensemble.trained_models, :machine_key)
+machines(group::SDMgroup) = map(m -> m.machine, group)
 
-# Symbol(String(model_key) * "_" * String(resampler_key) * "_" * string(f))
+sdm_machines(ensemble::SDMensemble) = mapreduce(group -> group.sdm_machines, vcat, ensemble)
 
-# Function to convienently select some models from the ensemble
-function select(ensemble::SDMensemble, indices::Vector{Int})
-    trained_models = ensemble.trained_models[indices]
+# machine_key generates a unique key for a machine
+machine_keys(group::SDMgroup) = ["$(group.model_name)_$(group.resampler_name)_$(m.fold)" for m in group]
 
-    model_keys = unique(getfield.(trained_models, :model_key))
-    resampler_keys = unique(getfield.(trained_models, :resampler_key))
-
-    return SDMensemble(
-        trained_models, 
-        ensemble.predictors, 
-        ensemble.n_presences, 
-        ensemble.n_absences, 
-        ensemble.models[model_keys], 
-        ensemble.resamplers[resampler_keys],
-        ensemble.data
-    )
+# A bunch of functions are applied to an ensemble by applying to each group and reducing with vcat
+for f in (:machines, :machine_keys)
+    @eval ($f)(ensemble::SDMensemble) = mapreduce(group -> ($f)(group), vcat, ensemble)
 end
 
-function select(
-    ensemble::SDMensemble; 
-    models = keys(ensemble.models), 
-    resamplers = keys(ensemble.resamplers),
-    folds = 1:1000)
+## Select methods
 
-    select(
-        ensemble,
-        findall(
-            m -> m.model_key in models && m.resampler_key in resamplers && m.fold in folds, 
-            ensemble.trained_models
+# Function to convienently select some models from groups or ensembles
+function select(group::SDMgroup, machine_indices::Vector{<:Int})
+    if length(machine_indices) == 0
+        return nothing
+    else 
+        return SDMgroup(
+            group.sdm_machines[machine_indices],
+            group.model,
+            group.resampler,
+            group.model_name,
+            group.resampler_name
         )
-    )
+    end
 end
 
+function select(ensemble::SDMensemble, group_indices::Vector{<:Int})
+    if length(group_indices) == 0
+        return nothing
+    else 
+        return SDMensemble(
+            ensemble.groups[group_indices],
+        )
+    end
+end
+
+function select(ensemble::SDMensemble; machines::Vector{<:Int})
+    if length(machines) == 0
+        return nothing
+    else 
+        Statistics.maximum(machines) <= n_machines(ensemble) || throw(BoundsError(ensemble, machines))
+
+        j = 0
+        groups = SDMgroup[]
+        groups = map(ensemble) do group
+            i = j
+            j = i + length(group)
+            select(group, filter(x -> x > i && x <= j, machines) .- i)
+        end
+
+        return SDMensemble(
+            filter(!Base.isnothing, groups),
+        )
+    end
+end
+
+## Show methods
 function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
-    println(io, "SDMensemble with $(Base.length(ensemble)) groups")
+    n_presence = sum(data(ensemble).response .== true)
+    n_absence = sum(data(ensemble).response .== false)
+
+    sc = MLJBase.schema(data(ensemble).predictor)
+    sci = sc.scitypes
+    nam = sc.names
+
+    println(io, "SDMensemble with $(n_machines(ensemble)) machines across $(Base.length(ensemble)) groups")
+    println(io, "Occurence data: Presence-Absence with $n_presence presences and $n_absence absences")
+    println(io, "Predictors: $(join(["$key ($scitype)" for (key, scitype) in zip(nam, sci)], ", "))")
 
     model_names = getfield.(ensemble.groups, :model_name)
     resampler_names = getfield.(ensemble.groups, :resampler_name)
     n_models = Base.length.(ensemble.groups)
     data = hcat(model_names, resampler_names, n_models)
-    header = (["model", "resampler", "number of models"])
+    header = (["model", "resampler", "machines"])
     PrettyTables.pretty_table(io, data; header = header)
-
-    #println(io, "model keys: ", keys(ensemble.models))
-    #show(io, mime, Tables.rows(ensemble))
 end
 
+function Base.show(io::IO, mime::MIME"text/plain", group::SDMgroup)
+    println(io, "SDMgroup with $(Base.length(group)) machines")
+    println(io, "Model $(group.model_name) and resampler $(group.resampler_name)")
+    train_p = group.train
+
+end
+
+
+## Table interface !! Is this still valid?
 Tables.istable(::Type{SDMensemble}) = true
-Tables.schema(ensemble::SDMensemble) = Tables.schema(ensemble.trained_models[1])
-Tables.rows(ensemble::SDMensemble) = Tables.rows(ensemble.trained_models)
-Tables.columns(ensemble::SDMensemble) = Tables.columns(ensemble.trained_models)
+Tables.schema(ensemble::SDMensemble) = Tables.schema(ensemble.groups[1])
+Tables.rows(ensemble::SDMensemble) = Tables.rows(ensemble.groups)
+Tables.columns(ensemble::SDMensemble) = Tables.columns(ensemble.groups)
 
 # Turns models into a NamedTuple with unique keys
 function _givenames(models::Vector)
