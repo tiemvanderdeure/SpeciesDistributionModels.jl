@@ -1,13 +1,22 @@
-function predict(ensemble::SDMensemble, data::NamedTuple)
-    # take data based on variable names
-    data_ = data[ensemble.predictors]
+function _unsafe_predict(mach::SDMmachine, data)
+    pdf.(MLJBase.predict(mach.machine, data), true)
+end
 
-    map(machines(ensemble)) do mach
-        # predict each machine and get the probability of true
-        Float64.(MLJBase.predict(mach, data_).prob_given_ref[2])
+
+function predict(mach::SDMmachine, d)
+    data_ = Tables.columntable(d)[keys(data(mach).predictor)] 
+    _unsafe_predict(mach, data_)
+end
+
+function predict(s::SDMgroupOrEnsemble, d)
+    data_ = Tables.columntable(d)[keys(data(s).predictor)] 
+
+    mapreduce(hcat, sdm_machines(s)) do mach
+        _unsafe_predict(mach, data_)
     end
 end
 
+#= on pause until RasterStacks are compatible with Tables.jl
 function predict(ensemble::SDMensemble, data::Rasters.RasterStack)
     preds = Tuple(ensemble.predictors)
 
@@ -38,13 +47,15 @@ function predict(ensemble::SDMensemble, data::Rasters.RasterStack)
 
     return outraster
 end
+=#
 
-function predict(ensemble::SDMensemble, rows::Symbol)
-    y_hat_y = map(ensemble.trained_models) do model
-        y_hat = MLJBase.predict(model.machine, rows = model[rows])
-        y = ensemble.data.response[model[rows]]
+# inernal convenience function to predict just train or test rows for each machine
+function _predict(s::SDMgroupOrEnsemble, rows::Symbol)
+    y_hat_y = map(sdm_machines(s)) do sdm_mach
+        y_hat = MLJBase.predict(sdm_mach.machine, rows = sdm_mach[rows])
+        y = data(s).response[sdm_mach[rows]]
         return (;y_hat, y)
     end
 
-    return NamedTuple{Tuple(machine_keys(ensemble))}(y_hat_y)
+    return (y_hat_y)
 end
