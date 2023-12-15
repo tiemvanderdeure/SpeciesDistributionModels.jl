@@ -1,15 +1,14 @@
 module SpeciesDistributionModels
 
 import Tables, StatsBase, Statistics
-import MLJBase, StatisticalMeasures, ScientificTypesBase, GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
+import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
+import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
 
 using Rasters: Raster, RasterStack
 
 using Makie: Toggle, Label, scatter!, lines!, Axis, Figure, GridLayout, lift
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
-
-import CategoricalArrays.CategoricalArray
 
 export SDMensemble, predict, sdm, select, machines, machine_keys, shap, 
     interactive_evaluation, interactive_response_curves
