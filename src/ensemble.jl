@@ -3,8 +3,8 @@ struct SDMmachine
     machine
     predictors::NTuple{<:Any, Symbol}
     fold
-    train
-    test
+    train_rows
+    test_rows
 end
 
 # Groups have multiple machines with identical model and resampler
@@ -25,7 +25,9 @@ SDMgroupOrEnsemble = Union{SDMgroup, SDMensemble}
 
 # Rather than storing it in ensemble, access it like this? It looks like args stores exactly the data as it is given to the machine
 data(mach::SDMmachine) = (predictor = mach.machine.args[1].data, response = mach.machine.args[2].data)
-data(e::SDMgroupOrEnsemble) = data(first(sdm_machines(e)))
+data(group::SDMgroup) = data(group[1])
+data(ensemble::SDMensemble) = data(ensemble[1])
+
 
 
 #Base.getproperty(ensemble::SDMensemble, key::Symbol) = getproperty.(ensemble, key)
@@ -39,13 +41,13 @@ n_machines(ensemble::SDMensemble) = mapreduce(group -> length(group.sdm_machines
 
 machines(group::SDMgroup) = map(m -> m.machine, group)
 
-sdm_machines(ensemble::SDMensemble) = mapreduce(group -> group.sdm_machines, vcat, ensemble)
+sdm_machines(group::SDMgroup) = group.sdm_machines
 
 # machine_key generates a unique key for a machine
 machine_keys(group::SDMgroup) = ["$(group.model_name)_$(group.resampler_name)_$(m.fold)" for m in group]
 
 # A bunch of functions are applied to an ensemble by applying to each group and reducing with vcat
-for f in (:machines, :machine_keys)
+for f in (:machines, :machine_keys, :sdm_machines)
     @eval ($f)(ensemble::SDMensemble) = mapreduce(group -> ($f)(group), vcat, ensemble)
 end
 
@@ -112,16 +114,15 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
     model_names = getfield.(ensemble.groups, :model_name)
     resampler_names = getfield.(ensemble.groups, :resampler_name)
     n_models = Base.length.(ensemble.groups)
-    data = hcat(model_names, resampler_names, n_models)
+    table_cols = hcat(model_names, resampler_names, n_models)
     header = (["model", "resampler", "machines"])
-    PrettyTables.pretty_table(io, data; header = header)
+    PrettyTables.pretty_table(io, table_cols; header = header)
+    
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", group::SDMgroup)
     println(io, "SDMgroup with $(Base.length(group)) machines")
     println(io, "Model $(group.model_name) and resampler $(group.resampler_name)")
-    train_p = group.train
-
 end
 
 
@@ -186,9 +187,9 @@ function sdm(
 
     # merge presence and absence data into one namedtuple of vectors
     predictor_values = NamedTuple{Tuple(var_keys)}([[Tables.columns(absence)[var]; Tables.columns(presences)[var]] for var in var_keys])
-    response_values = CategoricalArray(
+    response_values = CategoricalArrays.categorical(
         [falses(n_absence); trues(n_presence)]; 
-        levels = [false, true], ordered = true
+        levels = [false, true], ordered = false
     )
 
     models_ = _givenames(models)
@@ -212,9 +213,6 @@ function sdm(
         end
     end
 
-    return SDMensemble(
-        sdm_groups, 
-        (predictor = predictor_values, response = response_values)
-    )
+    return SDMensemble(sdm_groups)
 
 end
