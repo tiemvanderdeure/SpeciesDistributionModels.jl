@@ -1,5 +1,5 @@
 function _unsafe_predict(mach::SDMmachine, data)
-    pdf.(MLJBase.predict(mach.machine, data), true)
+    CategoricalDistributions.pdf.(MLJBase.predict(mach.machine, data), true)
 end
 
 

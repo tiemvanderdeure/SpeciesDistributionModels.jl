@@ -4,6 +4,8 @@ import Tables, StatsBase, Statistics
 import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
 import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
 
+using MLJBase: pdf
+
 using Rasters: Raster, RasterStack
 
 using Makie: Toggle, Label, scatter!, lines!, Axis, Figure, GridLayout, lift
