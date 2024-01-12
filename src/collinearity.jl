@@ -12,14 +12,7 @@ Pearson(; threshold) = Pearson(threshold)
 
 # Need to add a method for RasterStack, unless it will be Tables.jl compatible
 
-function remove_collinear(data; max_size = 10_000, method, verbose::Bool = true)
-    rows = Tables.rowtable(data)
-    nrows = length(rows)
-    if max_size < nrows
-         data = rows[StatsBase.randperm(nrows)[1:max_size]]
-    end
-    _remove_collinear(data, method, verbose)
-end
+remove_collinear(data; method, verbose::Bool = true) = _remove_collinear(data, method, verbose)
 
 _remove_collinear(data, v::Vif, verbose) = _vifstep(data, v.threshold, verbose)
 _remove_collinear(data, p::Pearson, verbose) = _pearsonstep(data, p.threshold, verbose)
