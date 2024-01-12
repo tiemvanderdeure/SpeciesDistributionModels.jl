@@ -11,7 +11,29 @@ end
 Pearson(; threshold) = Pearson(threshold)
 
 # Need to add a method for RasterStack, unless it will be Tables.jl compatible
+"""
+    remove_collinear(data; method, verbose::Bool = true)
 
+Removes strongly correlated variables in `data`, until correlation is below a threshold specified in `method`.
+
+## Arguments
+- `data`. The data to check for collinearity. Must be Tables.jl-compatible. 
+- `method` can currently be either `Vif` or `Pearson`, which use GVIF or Pearson's r, respectively.
+- `verbose`: show information about the collinearity test. Defaults to `true`. 
+
+## Example
+```julia
+julia> import SpeciesDistributionModels as SDM
+julia> mydata = (a = 1:100, b = sqrt.(1:100), c = rand(100))
+julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
+[ Info: a has highest GVIF of 28.367942095054225
+[ Info: Removing a, 2 variables remaining
+[ Info: b has highest GVIF of 1.0077618445543057
+[ Info: All variables are below threshold, returning remaining variables
+(:b, :c)
+```
+
+"""
 remove_collinear(data; method, verbose::Bool = true) = _remove_collinear(data, method, verbose)
 
 _remove_collinear(data, v::Vif, verbose) = _vifstep(data, v.threshold, verbose)
