@@ -1,5 +1,10 @@
 abstract type AbstractCollinearityMethod end
 
+struct Gvif <: AbstractCollinearityMethod
+    threshold
+end
+Gvif(; threshold) = Gvif(threshold)
+
 struct Vif <: AbstractCollinearityMethod
     threshold
 end
@@ -12,14 +17,14 @@ Pearson(; threshold) = Pearson(threshold)
 
 # Need to add a method for RasterStack, unless it will be Tables.jl compatible
 """
-    remove_collinear(data; method, verbose::Bool = true)
+    remove_collinear(data; method, silent = false)
 
 Removes strongly correlated variables in `data`, until correlation is below a threshold specified in `method`.
 
-## Arguments
-- `data`. The data to check for collinearity. Must be Tables.jl-compatible. 
-- `method` can currently be either `Vif` or `Pearson`, which use GVIF or Pearson's r, respectively.
-- `verbose`: show information about the collinearity test. Defaults to `true`. 
+`method` can currently be either `Gvif`, `Vif` or `Pearson`, which use GVIF, VIF, or Pearson's r, respectively.
+GVIF and VIF are similar method, but GVIF includes categorical variables whereas VIF ignores them.
+
+To run without showing information about collinearity scores, set `silent = true`.
 
 ## Example
 ```julia
@@ -34,23 +39,32 @@ julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
 ```
 
 """
-remove_collinear(data; method, verbose::Bool = true) = _remove_collinear(data, method, verbose)
+function remove_collinear(data; method, silent::Bool = false) 
+    schema = Tables.schema(data)
+    datakeys = schema.names
+    iscategorical = collect(schema.types .<: CategoricalArrays.CategoricalValue)
+    _remove_collinear(data, datakeys, method, ~silent, iscategorical)
+end
 
-_remove_collinear(data, v::Vif, verbose) = _vifstep(data, v.threshold, verbose)
-_remove_collinear(data, p::Pearson, verbose) = _pearsonstep(data, p.threshold, verbose)
+_remove_collinear(data, datakeys, v::Vif, verbose, iscategorical) = (_vifstep(data, datakeys[.~iscategorical], v.threshold, verbose, StatsAPI.vif)..., datakeys[iscategorical]...)
+_remove_collinear(data, datakeys, v::Gvif, verbose, iscategorical) = _vifstep(data, datakeys, v.threshold, verbose, StatsAPI.gvif)
+_remove_collinear(data, datakeys, p::Pearson, verbose, iscategorical) = (_pearsonstep(data, datakeys[.~iscategorical], p.threshold, verbose)..., datakeys[iscategorical]...)
 
-function _vifstep(data, threshold, verbose)
-    datakeys = Tables.schema(data).names
+function _vifstep(data, datakeys, threshold, verbose, vifmethod)
     highest_vif = threshold + 1.
     while highest_vif > threshold 
         # make a custom implementation of gvif that works without the useless model
         m = GLM.lm(StatsModels.FormulaTerm(StatsModels.term(1), StatsModels.term.(datakeys)), data) 
-        vifresult = StatsAPI.gvif(m) 
+        vifresult = vifmethod(m) 
         maxvif = Base.findmax(vifresult)
         highest_vif = maxvif[1]
         if verbose
-            @info "$(datakeys[maxvif[2]]) has highest GVIF of $(maxvif[1])"
+            @info "$(datakeys[maxvif[2]]) has highest VIF score: $(maxvif[1])"
         end
+        if isnan(highest_vif)
+            error("Cannot compute VIF. Possible some variables have perfect collinearity")
+        end
+
         if highest_vif > threshold
             if verbose
                 @info "Removing $(datakeys[maxvif[2]]), $(length(datakeys)-1) variables remaining"
@@ -67,8 +81,8 @@ function _vifstep(data, threshold, verbose)
 end
 
 # to break ties it j
-function _pearsonstep(data, threshold, verbose)
-    data = Tables.columntable(data)
+function _pearsonstep(data, datakeys, threshold, verbose)
+    data = Tables.columntable(data)[datakeys]
     datamatrix = reduce(hcat, data)
     c = abs.(Statistics.cor(datamatrix) - LinearAlgebra.I)
     correlated_vars_idx = findall(LinearAlgebra.LowerTriangular(c) .> threshold)

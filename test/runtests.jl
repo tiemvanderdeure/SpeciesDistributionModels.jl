@@ -25,10 +25,16 @@ end
 
 @testset "collinearity" begin
     # mock data with a collinearity problem
-    data_with_collinearity = merge(backgrounddata, (; d = backgrounddata.a .+ rand(n), e = backgrounddata.a .+ rand(n)))
+    data_with_collinearity = merge(backgrounddata, (; d = backgrounddata.a .+ rand(n), e = backgrounddata.a .+ rand(n), f = f = categorical(rand(Distributions.Binomial(3, 0.5), 500))    ))
 
-    rm_col_vif = remove_collinear(data_with_collinearity; method = SDM.Vif(; threshold = 2.), verbose = false)
-    rm_col_pearson = remove_collinear(data_with_collinearity; method = SDM.Pearson(; threshold = 0.65), verbose = false)
-    @test rm_col_vif == (:b, :c, :d, :e)
-    @test rm_col_pearson == (:b, :c, :d, :e)
+    rm_col_gvif = remove_collinear(data_with_collinearity; method = SDM.Gvif(; threshold = 2.), silent = true)
+    rm_col_vif = remove_collinear(data_with_collinearity; method = SDM.Vif(; threshold = 2.), silent = true)
+    rm_col_pearson = remove_collinear(data_with_collinearity; method = SDM.Pearson(; threshold = 0.65), silent = true)
+    @test rm_col_gvif == (:b, :c, :d, :e, :f)
+    @test rm_col_vif == (:b, :d, :e, :c, :f)
+    @test rm_col_pearson == (:b, :d, :e, :c, :f)
+
+    data_with_perfect_collinearity = (a = [1,2,3], b = [1,2,3])
+    Test.@test_throws Exception remove_collinear(data_with_perfect_collinearity; method = SDM.Gvif(; threshold = 2.), verbose = true)
+    @test remove_collinear(data_with_perfect_collinearity; method = SDM.Pearson(; threshold = 0.65), silent = true) == (:a, )
 end
