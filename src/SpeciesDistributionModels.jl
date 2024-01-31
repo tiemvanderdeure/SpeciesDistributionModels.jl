@@ -2,13 +2,11 @@ module SpeciesDistributionModels
 
 import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random, ThreadsX
 import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
-import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
+import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess
 
 using MLJBase: pdf
 
 using Rasters: Raster, RasterStack, Band
-
-using Makie: Toggle, Label, scatter!, lines!, Axis, Figure, GridLayout, lift
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 
@@ -30,6 +28,5 @@ include("explain/explain.jl")
 include("explain/shapley.jl")
 include("evaluate.jl")
 include("interface.jl")
-include("plots.jl")
 
 end
