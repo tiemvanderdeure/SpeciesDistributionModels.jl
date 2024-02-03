@@ -2,13 +2,15 @@ abstract type AbstractCollinearityMethod end
 
 struct Gvif <: AbstractCollinearityMethod
     threshold
+    remove_perfectly_collinear
 end
-Gvif(; threshold) = Gvif(threshold)
+Gvif(; threshold, remove_perfectly_collinear = true) = Gvif(threshold, remove_perfectly_collinear)
 
 struct Vif <: AbstractCollinearityMethod
     threshold
+    remove_perfectly_collinear
 end
-Vif(; threshold) = Vif(threshold)
+Vif(; threshold, remove_perfectly_collinear = true) = Vif(threshold, remove_perfectly_collinear)
 
 struct Pearson <: AbstractCollinearityMethod
     threshold
@@ -46,30 +48,44 @@ function remove_collinear(data; method, silent::Bool = false)
     _remove_collinear(data, datakeys, method, ~silent, iscategorical)
 end
 
-_remove_collinear(data, datakeys, v::Vif, verbose, iscategorical) = (_vifstep(data, datakeys[.~iscategorical], v.threshold, verbose, StatsAPI.vif)..., datakeys[iscategorical]...)
-_remove_collinear(data, datakeys, v::Gvif, verbose, iscategorical) = _vifstep(data, datakeys, v.threshold, verbose, StatsAPI.gvif)
+_remove_collinear(data, datakeys, v::Vif, verbose, iscategorical) = (_vifstep(data, datakeys[.~iscategorical], v.threshold, verbose, StatsAPI.vif, v.remove_perfectly_collinear)..., datakeys[iscategorical]...)
+_remove_collinear(data, datakeys, v::Gvif, verbose, iscategorical) = _vifstep(data, datakeys, v.threshold, verbose, StatsAPI.gvif, v.remove_perfectly_collinear)
 _remove_collinear(data, datakeys, p::Pearson, verbose, iscategorical) = (_pearsonstep(data, datakeys[.~iscategorical], p.threshold, verbose)..., datakeys[iscategorical]...)
 
-function _vifstep(data, datakeys, threshold, verbose, vifmethod)
+function _vifstep(data, datakeys, threshold, verbose, vifmethod, remove_perfectly_collinear)
     highest_vif = threshold + 1.
-    while highest_vif > threshold 
+    while highest_vif > threshold && length(datakeys) > 1
         # make a custom implementation of gvif that works without the useless model
         m = GLM.lm(StatsModels.FormulaTerm(StatsModels.term(1), StatsModels.term.(datakeys)), data) 
         vifresult = vifmethod(m) 
         maxvif = Base.findmax(vifresult)
-        highest_vif = maxvif[1]
+
+        if isnan(maxvif[1])
+            if remove_perfectly_collinear
+                @warn "VIF calculation returned NaN, looking for variables with perfect collinearity."
+                perfectly_collinear_var = findfirst(isnan.(StatsModels.stderror(m)[2:end]))
+                if isnothing(perfectly_collinear_var)
+                    error("Found no perfectly collinear variables")
+                else
+                    maxvif = (Inf, perfectly_collinear_var)
+                    @info "Removing perfectly collinear variable. To disable this behaviour, set remove_perfectly_collinear to false."
+                end
+            else 
+                error("VIF calculation returned NaN. If some variables have perfect collinearity, try running with remove_perfectly_collinear = true.")
+            end
+        end
+        
         if verbose
             @info "$(datakeys[maxvif[2]]) has highest VIF score: $(maxvif[1])"
         end
-        if isnan(highest_vif)
-            error("Cannot compute VIF. Possible some variables have perfect collinearity")
-        end
+        
+        highest_vif = maxvif[1]
 
         if highest_vif > threshold
             if verbose
                 @info "Removing $(datakeys[maxvif[2]]), $(length(datakeys)-1) variables remaining"
             end
-           datakeys = datakeys[filter(x -> x != maxvif[2], 1:length(datakeys))] # not very elegant!
+           datakeys = datakeys[Base.setdiff(1:length(datakeys), maxvif[2])] # not very elegant!
         end 
     end
 
@@ -87,7 +103,7 @@ function _pearsonstep(data, datakeys, threshold, verbose)
     c = abs.(Statistics.cor(datamatrix) - LinearAlgebra.I)
     correlated_vars_idx = findall(LinearAlgebra.LowerTriangular(c) .> threshold)
     if verbose
-        @info "Found $(length(correlated_vars_idx)) correlated variable pairs"
+        @info "Found $(length(correlated_vars_idx)) pairs of highly correlated vairables"
         for idx in correlated_vars_idx
             println("$(keys(data)[idx.I[1]]) ~ $(keys(data)[idx.I[2]]): $(c[idx])")
         end
@@ -101,7 +117,9 @@ function _pearsonstep(data, datakeys, threshold, verbose)
         correlated_vars = [c for c in correlated_vars if ~in(to_remove, c)]
         append!(vars_to_remove, to_remove)
     end
-    vars_to_remove
+    if verbose
+        @info "Removed $(length(vars_to_remove)) variables: $(keys(data)[vars_to_remove]). Returning remaining variables"
+    end
     vars_remaining = keys(data)[setdiff(1:length(keys(data)), vars_to_remove)]
     return vars_remaining
 end
