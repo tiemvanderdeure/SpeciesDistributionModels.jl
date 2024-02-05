@@ -56,20 +56,6 @@ function _reformat_and_predict(e::SDMensemble, data, reducer::Function, by_group
     end
 end
 
-#=
-# Possibly convert the if-else to multiple dispatch?
-function _predict(e::SDMensemble, data, reducer, by_group)
-    if !by_group
-        pred = mapreduce(g -> _predict(g, data, nothing), merge, e)
-        _maybe_reduce(reducer, pred)
-    elseif by_group
-        isnothing(reducer) && error("by_group is set to true, but no reducer is provided.")
-        NamedTuple{Tuple(model_names(e))}(map(g -> _predict(g, d, reducer), e))
-    else
-    end
-end
-=#
-
 # Dispatch on RasterStacks
 _reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, reducer::Function, by_group::Bool) = 
     _reformat_and_predict_raster(e, rs, reducer, by_group)
@@ -103,49 +89,4 @@ function _build_raster(missing_mask::Rasters.AbstractRaster, pr::Vector)
     output = Raster(Array{Union{Missing, T}}(missing, size(r_dims)), dims = r_dims)
     output[missing_mask] .= pr
     return output
-end
-
-
-#= on pause until RasterStacks are compatible with Tables.jl
-function predict(ensemble::SDMensemble, data::Rasters.RasterStack)
-    preds = Tuple(ensemble.predictors)
-
-    # Check dimensions match and variables exist
-    data1 = data[first(preds)]
-    dims1 = Rasters.dims(data1)
-    if ~all(p -> Rasters.dims(data[p]) == dims1, preds) error("Dimensions of data do not match") end
-
-    # Find missing values -- maybe add this as method to RasterStack?
-    missings = falses(dims1)
-    for l in data[preds]
-        missings .|= l .=== Rasters.missingval(l)
-    end
-
-    # Take non-missing data and convert to namedtuple of vectors
-    data_ = NamedTuple{preds}(map(p -> data[p][.~missings], preds))
-
-    # Reformat data to named tuple of vectors
-    @time data_ = NamedTuple{Tuple(ensemble.predictors)}([vec(data[pre]) for pre in preds])
-
-    # Allocate Raster to save results
-    outraster = Raster(fill(NaN, (dims1..., Rasters.Band(machine_keys(ensemble)))); missingval = NaN, crs = Rasters.crs(data1))
-
-    for (i, mach) in enumerate(machines(ensemble))
-        # predict each machine and get the probability of true
-        @views outraster[Rasters.Band(i)][.~missings] .= MLJBase.predict(mach, data_).prob_given_ref[2]
-    end
-
-    return outraster
-end
-=#
-
-# inernal convenience function to predict just train or test rows for each machine
-function _predict(s::SDMgroupOrEnsemble, rows::Symbol)
-    y_hat_y = map(sdm_machines(s)) do sdm_mach
-        y_hat = MLJBase.predict(sdm_mach.machine, rows = sdm_mach[rows])
-        y = data(s).response[sdm_mach[rows]]
-        return (;y_hat, y)
-    end
-
-    return (y_hat_y)
 end
