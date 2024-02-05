@@ -37,9 +37,11 @@ function sdm_ensemble(
 end
 
 """
-    evaluate(ensemble::SDMensemble; measures)
+    evaluate(x; measures)
 
-Evaluate an ensemble, by applying the measures provided to the data used to built an ensemble, and return an `SDMensembleEvaluation`.
+Evaluate `x`, which could be a SDMmachine, SDMgroup, or SDMensemble, 
+by applying the measures provided to the data used to built an ensemble, 
+and return an evaluation object.
 
 `measures` is a `NamedTuple` of measures. The keys are used to identify the measures.
 This defaults to using auc, log_loss, and kappa.
@@ -49,14 +51,14 @@ For threshold-dependent measures, the highest score as well as the threshold at 
 A list of measurse is available here: https://juliaai.github.io/StatisticalMeasures.jl/dev/auto_generated_list_of_measures/#aliases. However, note that not all measures are useful.
 """
 function evaluate( # Define this as an extension of MLJBase.evaluate??
-    ensemble,
+    x;
     measures = (; 
         auc = StatisticalMeasures.auc, 
         log_loss = StatisticalMeasures.log_loss, 
         kappa = StatisticalMeasures.kappa
     )
 )
-    _evaluate_ensemble(ensemble, measures)
+    _evaluate(x, measures)
 end
 
 

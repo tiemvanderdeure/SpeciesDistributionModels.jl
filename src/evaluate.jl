@@ -93,9 +93,9 @@ function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMgroupOrEnsembl
     
 end
 
-## Core evuator
+## Core evaluator
 # internal method to get a vector of scores from y_hats, ys, and a namedtuple of measures
-function _evaluate(y_hat, y, measures)
+function _evaluate(y_hat::MLJBase.UnivariateFiniteArray, y::CategoricalArrays.CategoricalArray, measures)
     map(measures) do measure
         # If the measures is threshold independent
         if StatisticalMeasuresBase.kind_of_proxy(measure) == StatisticalMeasures.LearnAPI.Distribution()
@@ -115,14 +115,7 @@ function _evaluate(y_hat, y, measures)
 end
 
 # Evaluate a single SDMmachine
-function evaluate(
-    sdm_machine::SDMmachine; 
-    measures =  (; 
-        auc = StatisticalMeasures.auc, 
-        log_loss = StatisticalMeasures.log_loss, 
-        kappa = StatisticalMeasures.kappa
-    )
-)
+function _evaluate(sdm_machine::SDMmachine, measures::NamedTuple)
     results = map((train = sdm_machine.train_rows, test = sdm_machine.test_rows)) do rows
         y_hat = MLJBase.predict(sdm_machine.machine, rows = rows)
         y = data(sdm_machine).response[rows]
@@ -133,19 +126,12 @@ function evaluate(
 end
 
 # Evaluate a group
-function evaluate(
-    group::SDMgroup;
-    measures =  (; 
-        auc = StatisticalMeasures.auc, 
-        log_loss = StatisticalMeasures.log_loss, 
-        kappa = StatisticalMeasures.kappa
-    )
-)
+function _evaluate(group::SDMgroup, measures)
     machine_evaluations = map(m -> (evaluate(m; measures = measures)), group)
 
     # average group prediction
     y_hat = mapreduce(+, machines(group)) do mach 
-        MLJBase.predict(mach) # MLJBase.predict because StatisticalMeasures expect UniverateFiniteArrays.
+        MLJBase.predict(mach) 
     end / length(group)
 
     y = data(group).response
@@ -159,14 +145,7 @@ function evaluate(
     )
 end
 
-function evaluate(
-    ensemble::SDMensemble, 
-    measures = (; 
-        auc = StatisticalMeasures.auc, 
-        log_loss = StatisticalMeasures.log_loss, 
-        kappa = StatisticalMeasures.kappa)
-    )
-
+function _evaluate(ensemble::SDMensemble, measures)
     group_evaluations = map(m -> (evaluate(m; measures = measures)), ensemble)
 
     # average ensemble prediction
