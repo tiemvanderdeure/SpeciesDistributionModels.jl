@@ -12,15 +12,30 @@ using Test
 
 @testset "SpeciesDistributionModels.jl" begin
     models = [SDM.random_forest(), SDM.random_forest(; max_depth = 3), SDM.linear_model(), SDM.boosted_regression_tree()]
-    resamplers = [SDM.MLJBase.CV(; shuffle = true, nfolds = 5)]
 
-    ensemble = sdm(
-        presencedata, backgrounddata, 
-        models, 
-        resamplers
+    ensemble = sdm_ensemble(
+        presencedata, backgrounddata;
+        models = models, resampler = SDM.MLJBase.CV(; shuffle = true, nfolds = 5)
     )
 
     evaluation = SDM.evaluate(ensemble)
+
+    pr1 = SDM.predict(ensemble, backgrounddata)
+    pr2 = SDM.predict(ensemble, backgrounddata; reducer = maximum)
+    pr3 = SDM.predict(ensemble, backgrounddata; reducer = maximum, by_group = true)
+
+    # Need much better tests
+    @test evaluation isa SDM.SDMensembleEvaluation
+    @test evaluation[1] isa SDM.SDMgroupEvaluation
+    @test evaluation[1][1] isa SDM.SDMmachineEvaluation
+    
+    @test pr2 isa Vector
+    @test collect(keys(pr1)) == SDM.machine_keys(ensemble)
+    @test collect(keys(pr1)) == SDM.model_names(ensemble)
+
+    @test_throws ArgumentError SDM.predict(ensemble, backgrounddata.a)
+    @test_throws Exception SDM.predict(ensemble, backgrounddata[(:a,)])
+    @test_throws Exception SDM.predict(ensemble, backgrounddata; by_group = true)
 end
 
 @testset "collinearity" begin
