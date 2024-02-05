@@ -31,7 +31,7 @@ using Test
     
     @test pr2 isa Vector
     @test collect(keys(pr1)) == SDM.machine_keys(ensemble)
-    @test collect(keys(pr1)) == SDM.model_names(ensemble)
+    @test collect(keys(pr3)) == SDM.model_names(ensemble)
 
     @test_throws ArgumentError SDM.predict(ensemble, backgrounddata.a)
     @test_throws Exception SDM.predict(ensemble, backgrounddata[(:a,)])
