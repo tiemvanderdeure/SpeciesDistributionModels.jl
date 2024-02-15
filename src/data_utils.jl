@@ -7,8 +7,3 @@ function _get_predictor_names(p, a)
     return predictors
 end
 
-function _missingmask(rs::Rasters.AbstractRasterStack)
-    mapreduce(.&, rs) do layer
-        layer .!== Rasters.missingval(layer)
-    end
-end
