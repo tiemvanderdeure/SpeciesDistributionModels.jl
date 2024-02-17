@@ -128,8 +128,14 @@ function _evaluate(y_hat::MLJBase.UnivariateFiniteArray, y::CategoricalArrays.Ca
     if any(map(kind -> kind == StatisticalMeasures.LearnAPI.LiteralTarget(), kinds_of_proxy))
         scores = pdf.(y_hat, true)
         thresholds = unique(scores)
-        thresholded_scores = map(t -> CategoricalArrays.categorical(scores .>= t, levels = [false, true]), thresholds)
-        conf_mats = StatisticalMeasures.ConfusionMatrix(; levels = [false, true], checks = false).(thresholded_scores, Ref(y))
+        levels = [false, true]
+        indexer = StatisticalMeasures.LittleDict(levels[i] => i for i in eachindex(levels)) |> StatisticalMeasures.freeze
+       # y_ = boolean_categorical(scores .>= 0.)
+        # use the internal methods to avoid constructing indexer every time
+        conf_mats = broadcast(thresholds) do t
+            y_ = boolean_categorical(scores .>= t)
+            StatisticalMeasures.ConfusionMatrices._confmat(y_, y, indexer, levels, false)
+        end    
     else
         conf_mats = nothing
     end
@@ -163,9 +169,8 @@ function _evaluate(group::SDMgroup, measures)
     machine_evaluations = map(m -> (evaluate(m; measures = measures)), group)
 
     # average group prediction
-    y_hat = mapreduce(+, machines(group)) do mach 
-        MLJBase.predict(mach) 
-    end / length(group)
+    p = predict(group, data(group).predictor, reducer = Statistics.mean)
+    y_hat = MLJBase.UnivariateFinite(categorical([false, true]), p, augment = true)
 
     y = data(group).response
     group_evaluation = _evaluate(y_hat, y, measures)
@@ -182,10 +187,8 @@ function _evaluate(ensemble::SDMensemble, measures)
     group_evaluations = map(m -> (evaluate(m; measures = measures)), ensemble)
 
     # average ensemble prediction
-    y_hat = mapreduce(+, machines(ensemble)) do mach 
-        MLJBase.predict(mach)
-    end / n_machines(ensemble)    
-
+    p = predict(ensemble, data(ensemble).predictor, reducer = Statistics.mean)
+    y_hat = MLJBase.UnivariateFinite(categorical([false, true]), p, augment = true)
     y = data(ensemble).response
     ensemble_evaluation = _evaluate(y_hat, y, measures)
     
