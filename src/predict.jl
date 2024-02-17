@@ -65,7 +65,7 @@ _reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack) =
     _reformat_and_predict_raster(m, rs)
 
 function _reformat_and_predict_raster(s::Union{<:SDMensemble, SDMgroup, SDMmachine}, rs::Rasters.AbstractRasterStack, args...)
-    missing_mask = Rasters.missingmask(rs; alllayers = true)
+    missing_mask = Rasters.boolmask(rs; alllayers = true)
     d = rs[missing_mask]
     pr =  _reformat_and_predict(s, d, args...)
     return _build_raster(missing_mask, pr)
