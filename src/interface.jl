@@ -53,9 +53,10 @@ A list of measurse is available here: https://juliaai.github.io/StatisticalMeasu
 function evaluate( # Define this as an extension of MLJBase.evaluate??
     x;
     measures = (; 
-        auc = StatisticalMeasures.auc, 
-        log_loss = StatisticalMeasures.log_loss, 
-        kappa = StatisticalMeasures.kappa
+        StatisticalMeasures.accuracy,
+        StatisticalMeasures.auc, 
+        StatisticalMeasures.log_loss, 
+        StatisticalMeasures.kappa
     )
 )
     _evaluate(x, measures)
