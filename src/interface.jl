@@ -8,7 +8,7 @@ The first input argument is species presences and the second (pseudo-)absences. 
 ## Keywords
 `models`: a `Vector` of the models to be used in the ensemble. All models must be MLJ-supported Classifiers. 
 For a full list of supported models, see https://alan-turing-institute.github.io/MLJ.jl/stable/model_browser/#Classification
-`resampler`: The resampling strategy to be used. Defaults to 5-fold cross validation.
+`resampler`: The resampling strategy to be used of type `MLJBase.ResamplingStrategy`. Defaults to 5-fold cross validation.
 `predictors`: a `Vector` of `Symbols` with the names of the predictor values to be used. By default, all pdf
 `verbosity`: an `Int` value that regulates how much information is printed.
 
@@ -64,21 +64,26 @@ end
 
 
 """
-    explain(ensemble::SDMensemble; method, [predictors])
+    explain(ensemble::SDMensemble; method, [data], [predictors])
 
-Generate response curves for all or some of the predictors used in the ensemble.
+Generate response curves for `ensemble`.
 
-`method` defaults to Shapley() and 
+## Keywords
+- `method` is the algorithm to use. See Shapley
+- `data` is the data to use to generate response curves, and defaults to the data used to train the ensemble
+- `predictors`: which predictors to generate response curves for. Defaults to all variables in `data`.
 
 """
-function explain end
+function explain(e::SDMensemble; method) end
 
 """
-    predict(SDMobject, newdata; [reducer], [by_group])
+    predict(SDMobject, newdata; clamp = false, [reducer], [by_group])
 
-Use an SDMmachine, group, or ensemble, to predict habitat suitability for some data, optionally summarized for the entire ensemble, or for each `SDMgroup`.
+Use an `SDMmachine`, `SDMgroup`, or `SDMensemble` to predict habitat suitability for some data, optionally summarized for the entire ensemble, or for each `SDMgroup`.
 
 `newdata` can be either a `RasterStack`, or some other data which must be compatible with Tables.jl. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
+
+If `clamp` is set to `true`, the predictions are clamped to the interval seen during of `SDMobject`
 
 Optionally provide a function to summarize the output as the `reducer` argument. This would typically be `Statistics.mean` or `Statistics.median`.
 If `by_group` is set to `true`, the data is reduced for each `SDMgroup`, if it is set to `false` (the default), it reduced across the entire ensemble.
@@ -86,15 +91,15 @@ If `by_group` is set to `true`, the data is reduced for each `SDMgroup`, if it i
 If `newdata` is a `RasterStack`, the `predict` returns a `Raster`; otherwise, it returns a `NamedTuple` of `Vectors`
 Habitat suitability is always reported as a floating-point number between 0 and 1.
 """
-function predict(m::SDMmachine, d)
-    _reformat_and_predict(m, d)
+function predict(m::SDMmachine, d; clamp = false)
+    _reformat_and_predict(m, d, clamp)
 end
-function predict(g::SDMgroup, d; reducer = nothing)
-    _reformat_and_predict(g, d, reducer)
+function predict(g::SDMgroup, d; clamp = false, reducer = nothing)
+    _reformat_and_predict(g, d, clamp, reducer)
 end
-function predict(e::SDMensemble, d; reducer = nothing, by_group = false)
+function predict(e::SDMensemble, d; clamp = false, reducer = nothing, by_group = false)
     by_group && isnothing(reducer) && error("If by_group is true, reducer must be specified")
-    _reformat_and_predict(e, d, reducer, by_group)
+    _reformat_and_predict(e, d, clamp, reducer, by_group)
 end
 
 
