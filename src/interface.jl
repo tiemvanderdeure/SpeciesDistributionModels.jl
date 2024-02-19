@@ -69,12 +69,14 @@ end
 Generate response curves for `ensemble`.
 
 ## Keywords
-- `method` is the algorithm to use. See Shapley
+- `method` is the algorithm to use. See ShapleyValues
 - `data` is the data to use to generate response curves, and defaults to the data used to train the ensemble
 - `predictors`: which predictors to generate response curves for. Defaults to all variables in `data`.
 
 """
-function explain(e::SDMensemble; method) end
+function explain(e::SDMensemble; method, data = data(e).predictor, predictors = keys(data))
+    _explain(e, method, data, predictors)
+end
 
 """
     predict(SDMobject, newdata; clamp = false, [reducer], [by_group])
