@@ -5,21 +5,24 @@ import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBas
 import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess
 
 using MLJBase: pdf
-
 using Rasters: Raster, RasterStack, Band
+using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
+using ComputationalResources: CPU1, CPUThreads
+using Makie: Toggle, Label, scatter!, lines!, Axis, Figure, GridLayout, lift
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 
-using ComputationalResources: CPU1, CPUThreads
-
 export SDMensemble, predict, sdm, select, machines, machine_keys,
-    interactive_evaluation, interactive_response_curves,
     remove_collinear,
     explain, variable_importance, ShapleyValues,
     SDMmachineExplanation, SDMgroupExplanation, SDMensembleExplanation,
     SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation
 
 include("data_utils.jl")
+# export stubs for extensions
+export interactive_response_curves, interactive_evaluation
+
+
 include("collinearity.jl")
 include("models.jl")
 include("ensemble.jl")
