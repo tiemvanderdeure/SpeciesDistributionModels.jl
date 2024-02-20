@@ -14,7 +14,7 @@ using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 
 using ComputationalResources: CPU1, CPUThreads
 
-export SDMensemble, predict, sdm_ensemble, select, machines, machine_keys,
+export SDMensemble, predict, sdm, select, machines, machine_keys,
     interactive_evaluation, interactive_response_curves,
     remove_collinear,
     explain, variable_importance, ShapleyValues,

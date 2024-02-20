@@ -1,5 +1,5 @@
 """
-    sdm_ensemble(presences, absences; models, [resampler], [predictors], [verbosity])
+    sdm(presences, absences; models, [resampler], [predictors], [verbosity])
 
 Construct an ensemble with input data specified in `presences` and `absences`.
 
@@ -15,13 +15,14 @@ For a full list of supported models, see https://alan-turing-institute.github.io
 ## Example
 
 """
-function sdm_ensemble(
+function sdm(
     presences,
     absences;
     models,
     resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
     predictors = _get_predictor_names(presences, absences),
-    verbosity = 0
+    verbosity = 0,
+    threaded = false
 )
 
     predictors = collect(predictors)
@@ -33,7 +34,9 @@ function sdm_ensemble(
     Base.intersect(predictors, Tables.schema(absences).names) == predictors || 
         error("The absence data does not contain all predictors specified")
 
-    _fit_sdm_ensemble(presences, absences, models, [resampler], predictors, verbosity)
+    backend = threaded ? CPUThreads() : CPU1()
+
+    _fit_sdm_ensemble(presences, absences, models, [resampler], predictors, verbosity, backend)
 end
 
 """
