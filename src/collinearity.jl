@@ -85,7 +85,7 @@ function _vifstep(data, datakeys, threshold, verbose, vifmethod, remove_perfectl
             if verbose
                 @info "Removing $(datakeys[maxvif[2]]), $(length(datakeys)-1) variables remaining"
             end
-           datakeys = datakeys[Base.setdiff(1:length(datakeys), maxvif[2])] # not very elegant!
+           datakeys = datakeys[Base.setdiff(1:length(datakeys), maxvif[2])]
         end 
     end
 

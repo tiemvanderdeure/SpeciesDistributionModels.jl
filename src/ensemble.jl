@@ -44,15 +44,16 @@ machines(group::SDMgroup) = map(m -> m.machine, group)
 sdm_machines(group::SDMgroup) = group.sdm_machines
 
 # machine_key generates a unique key for a machine
-machine_keys(group::SDMgroup) = ["$(group.model_name)_$(group.resampler_name)_$(m.fold)" for m in group]
+machine_keys(group::SDMgroup) = [Symbol("$(group.model_name)_$(group.resampler_name)_$(m.fold)") for m in group]
 
 # A bunch of functions are applied to an ensemble by applying to each group and reducing with vcat
 for f in (:machines, :machine_keys, :sdm_machines)
     @eval ($f)(ensemble::SDMensemble) = mapreduce(group -> ($f)(group), vcat, ensemble)
 end
 
-## Select methods
+model_names(ensemble) = getfield.(ensemble.groups, :model_name)
 
+## Select methods
 # Function to convienently select some models from groups or ensembles
 function select(group::SDMgroup, machine_indices::Vector{<:Int})
     if length(machine_indices) == 0
@@ -111,10 +112,10 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
     println(io, "Occurence data: Presence-Absence with $n_presence presences and $n_absence absences")
     println(io, "Predictors: $(join(["$key ($scitype)" for (key, scitype) in zip(nam, sci)], ", "))")
 
-    model_names = getfield.(ensemble.groups, :model_name)
+    m_names = model_names(ensemble)
     resampler_names = getfield.(ensemble.groups, :resampler_name)
     n_models = Base.length.(ensemble.groups)
-    table_cols = hcat(model_names, resampler_names, n_models)
+    table_cols = hcat(m_names, resampler_names, n_models)
     header = (["model", "resampler", "machines"])
     PrettyTables.pretty_table(io, table_cols; header = header)
     
@@ -135,7 +136,7 @@ Tables.columns(ensemble::SDMensemble) = Tables.columns(ensemble.groups)
 # Turns models into a NamedTuple with unique keys
 function _givenames(models::Vector)
     names = map(models) do model
-        replace(MLJBase.name(model), r"Classifier$"=>"")
+        Base.replace(MLJBase.name(model), r"Classifier$"=>"", r"Binary$"=>"")
     end
     for (name, n) in StatsBase.countmap(names)
         if n > 1
@@ -159,10 +160,11 @@ function _fit_sdm_group(
     folds,
     model_name, 
     resampler_name,
-    verbosity
+    verbosity,
+    cpu_backend
     )
 
-    machines = map(enumerate(folds)) do (f, (train, test))
+    machines = _map(cpu_backend)(enumerate(folds)) do (f, (train, test))
         _fit_sdm_model(predictor_values, response_values, model, f, train, test, verbosity)
     end
 
@@ -170,14 +172,14 @@ function _fit_sdm_group(
 
 end
 
-function sdm(
+function _fit_sdm_ensemble(
     presences, 
     absence, 
     models, 
-    resamplers;
-    var_keys::Vector{Symbol} = intersect(Tables.schema(absence).names, Tables.schema(presences).names),
-    scitypes::Vector{DataType} = [MLJBase.scitype(Tables.schema(presences).types) for key in var_keys],
-    verbosity::Int = 0
+    resamplers,
+    predictors::Vector{Symbol},
+    verbosity::Int,
+    cpu_backend
 )
     @assert Tables.istable(presences) && Tables.istable(absence)
 
@@ -186,7 +188,7 @@ function sdm(
     n_total = n_presence + n_absence
 
     # merge presence and absence data into one namedtuple of vectors
-    predictor_values = NamedTuple{Tuple(var_keys)}([[Tables.columns(absence)[var]; Tables.columns(presences)[var]] for var in var_keys])
+    predictor_values = NamedTuple{Tuple(predictors)}([[Tables.columns(absence)[var]; Tables.columns(presences)[var]] for var in predictors])
     response_values = CategoricalArrays.categorical(
         [falses(n_absence); trues(n_presence)]; 
         levels = [false, true], ordered = false
@@ -198,7 +200,7 @@ function sdm(
     sdm_groups = mapreduce(vcat, collect(keys(resamplers_))) do resampler_key
         resampler = resamplers_[resampler_key]
         folds = MLJBase.train_test_pairs(resampler, 1:n_total, response_values) ## get indices
-        map(collect(keys(models_))) do model_key
+        _map(cpu_backend)(collect(keys(models_))) do model_key
             model = models_[model_key]
             _fit_sdm_group(
                 predictor_values, 
@@ -208,7 +210,8 @@ function sdm(
                 folds,
                 model_key, 
                 resampler_key,
-                verbosity
+                verbosity,
+                cpu_backend
             )
         end
     end
