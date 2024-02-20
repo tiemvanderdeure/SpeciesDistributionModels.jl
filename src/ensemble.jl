@@ -160,7 +160,8 @@ function _fit_sdm_group(
     folds,
     model_name, 
     resampler_name,
-    verbosity
+    verbosity,
+    cpu_backend
     )
 
     machines = _map(cpu_backend)(enumerate(folds)) do (f, (train, test))
@@ -209,7 +210,8 @@ function _fit_sdm_ensemble(
                 folds,
                 model_key, 
                 resampler_key,
-                verbosity
+                verbosity,
+                cpu_backend
             )
         end
     end
