@@ -170,7 +170,7 @@ function _evaluate(group::SDMgroup, measures)
 
     # average group prediction
     p = predict(group, data(group).predictor, reducer = Statistics.mean)
-    y_hat = MLJBase.UnivariateFinite(categorical([false, true]), p, augment = true)
+    y_hat = MLJBase.UnivariateFinite(boolean_categorical([false, true]), p, augment = true)
 
     y = data(group).response
     group_evaluation = _evaluate(y_hat, y, measures)
@@ -188,7 +188,7 @@ function _evaluate(ensemble::SDMensemble, measures)
 
     # average ensemble prediction
     p = predict(ensemble, data(ensemble).predictor, reducer = Statistics.mean)
-    y_hat = MLJBase.UnivariateFinite(categorical([false, true]), p, augment = true)
+    y_hat = MLJBase.UnivariateFinite(boolean_categorical([false, true]), p, augment = true)
     y = data(ensemble).response
     ensemble_evaluation = _evaluate(y_hat, y, measures)
     

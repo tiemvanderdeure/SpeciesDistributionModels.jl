@@ -4,6 +4,7 @@
 function boolean_categorical(A::BitArray{N}) where N 
     CategoricalArrays.CategoricalArray{Bool, N, UInt8}(A, levels=[false, true], ordered=false)
 end
+boolean_categorical(A::AbstractVector{Bool}) = boolean_categorical(BitArray(A))
 
 function _get_predictor_names(p, a)
     predictors = Base.intersect(Tables.schema(a).names, Tables.schema(p).names)
