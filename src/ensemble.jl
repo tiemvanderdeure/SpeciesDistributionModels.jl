@@ -163,7 +163,7 @@ function _fit_sdm_group(
     verbosity
     )
 
-    machines = map(enumerate(folds)) do (f, (train, test))
+    machines = _map(cpu_backend)(enumerate(folds)) do (f, (train, test))
         _fit_sdm_model(predictor_values, response_values, model, f, train, test, verbosity)
     end
 
@@ -177,7 +177,8 @@ function _fit_sdm_ensemble(
     models, 
     resamplers,
     predictors::Vector{Symbol},
-    verbosity::Int = 0
+    verbosity::Int,
+    cpu_backend
 )
     @assert Tables.istable(presences) && Tables.istable(absence)
 
@@ -198,7 +199,7 @@ function _fit_sdm_ensemble(
     sdm_groups = mapreduce(vcat, collect(keys(resamplers_))) do resampler_key
         resampler = resamplers_[resampler_key]
         folds = MLJBase.train_test_pairs(resampler, 1:n_total, response_values) ## get indices
-        map(collect(keys(models_))) do model_key
+        _map(cpu_backend)(collect(keys(models_))) do model_key
             model = models_[model_key]
             _fit_sdm_group(
                 predictor_values, 
