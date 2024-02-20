@@ -1,6 +1,6 @@
 module SpeciesDistributionModels
 
-import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random
+import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random, ThreadsX
 import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
 import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Makie, Shapley, Loess
 
