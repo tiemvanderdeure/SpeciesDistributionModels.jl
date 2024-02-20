@@ -18,11 +18,12 @@ struct SDMensembleEvaluation <: AbstractVector{SDMgroupEvaluation}
     results
 end
 
+ScoreType = NamedTuple{(:score, :threshold), Tuple{Float64, Union{Missing, Float64}}}
+
 SDMevaluation = Union{SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation}
 SDMgroupOrEnsembleEvaluation = Union{SDMgroupEvaluation, SDMensembleEvaluation}
 
-ScoreType = NamedTuple{(:score, :threshold), Tuple{Float64, Union{Missing, Float64}}}
-
+# Basic operations on evaluate objects
 Base.getindex(ensemble::SDMensembleEvaluation, i) = ensemble.group_evaluations[i]
 Base.getindex(group::SDMgroupEvaluation, i) = group.machine_evaluations[i]
 
@@ -129,9 +130,8 @@ function _evaluate(y_hat::MLJBase.UnivariateFiniteArray, y::CategoricalArrays.Ca
         scores = pdf.(y_hat, true)
         thresholds = unique(scores)
         levels = [false, true]
+        # use the internal method to avoid constructing indexer every time
         indexer = StatisticalMeasures.LittleDict(levels[i] => i for i in eachindex(levels)) |> StatisticalMeasures.freeze
-       # y_ = boolean_categorical(scores .>= 0.)
-        # use the internal methods to avoid constructing indexer every time
         conf_mats = broadcast(thresholds) do t
             y_ = boolean_categorical(scores .>= t)
             StatisticalMeasures.ConfusionMatrices._confmat(y_, y, indexer, levels, false)
