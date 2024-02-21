@@ -8,7 +8,6 @@ using MLJBase: pdf
 using Rasters: Raster, RasterStack, Band
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 using ComputationalResources: CPU1, CPUThreads
-using Makie: Toggle, Label, scatter!, lines!, Axis, Figure, GridLayout, lift
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 
