@@ -1,3 +1,25 @@
+function Makie.boxplot(ev::SDMensembleEvaluation, measure::Symbol)
+    modelnames = Base.string.(model_names(ev.ensemble))
+    f = Makie.Figure()
+    
+    for (i, t) in enumerate((:train, :test))
+        ax = Makie.Axis(
+            f[1,i]; 
+            limits = (nothing, nothing, 0, 1),
+            xticks = (1:Base.length(ev), modelnames),
+            xticklabelrotation = -pi/4,
+            title = Base.string(t)
+        )
+        y = machine_evaluations(ev)[t][measure]
+        x = mapreduce(vcat, enumerate(ev)) do (i, e)
+            fill(i, Base.length(e))
+        end
+    
+        Makie.boxplot!(ax, x, y)
+    end
+    return f
+end
+
 function classification_rates(scores, y)
     fpr, tpr, thresholds = StatisticalMeasures.roc_curve(scores, y)
     tnr = 1. .- fpr
@@ -93,7 +115,7 @@ function interactive_evaluation(ensemble)
 
     return fig #should return FigureAxisPlot somehow?
 end
-
+#=
 # Plot output from shapley
 function interactive_response_curves(shapley::SDMshapley)
     f = Figure()
@@ -135,3 +157,4 @@ function interactive_response_curves(shapley::SDMshapley)
 
     f
 end
+=#
