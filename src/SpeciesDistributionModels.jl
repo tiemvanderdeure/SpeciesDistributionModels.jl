@@ -10,12 +10,16 @@ using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 using ComputationalResources: CPU1, CPUThreads
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
+using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy
 
 export SDMensemble, predict, sdm, select, machines, machine_keys,
     remove_collinear,
     explain, variable_importance, ShapleyValues,
     SDMmachineExplanation, SDMgroupExplanation, SDMensembleExplanation,
     SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation
+
+# re-export
+export auc, kappa, sensitivity, selectivity, accuracy
 
 include("data_utils.jl")
 # export stubs for extensions
@@ -30,5 +34,6 @@ include("explain/explain.jl")
 include("explain/shapley.jl")
 include("evaluate.jl")
 include("interface.jl")
+include("extensions.jl")
 
 end
