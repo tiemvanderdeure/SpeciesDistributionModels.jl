@@ -1,7 +1,7 @@
 using SpeciesDistributionModels, MLJBase
 import SpeciesDistributionModels as SDM
 using StableRNGs, Distributions, Test
-using GLMakie
+using Makie
 
 rng = StableRNG(0)
 # some mock data
