@@ -1,10 +1,11 @@
 using SpeciesDistributionModels, MLJBase
 import SpeciesDistributionModels as SDM
 using StableRNGs, Distributions, Test
+using GLMakie
 
 rng = StableRNG(0)
 # some mock data
-n = 500
+n = 100
 backgrounddata = (a = rand(rng, n), b = rand(rng, n), c = rand(rng, n))
 presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
@@ -45,11 +46,16 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
     varimp = variable_importance(expl)
     @test varimp.b > varimp.a
     @test varimp.c > varimp.a
+
+    # plots
+    interactive_evaluation(ensemble, thresholds = 0:0.001:1)
+    interactive_response_curves(expl)
+    boxplot(evaluation, :auc)
 end
 
 @testset "collinearity" begin
     # mock data with a collinearity problem
-    data_with_collinearity = merge(backgrounddata, (; d = backgrounddata.a .+ rand(rng, n), e = backgrounddata.a .+ rand(rng, n), f = f = categorical(rand(Distributions.Binomial(3, 0.5), 500))    ))
+    data_with_collinearity = merge(backgrounddata, (; d = backgrounddata.a .+ rand(rng, n), e = backgrounddata.a .+ rand(rng, n), f = f = categorical(rand(Distributions.Binomial(3, 0.5), n))))
 
     rm_col_gvif = remove_collinear(data_with_collinearity; method = SDM.Gvif(; threshold = 2.), silent = false)
     rm_col_vif = remove_collinear(data_with_collinearity; method = SDM.Vif(; threshold = 2.), silent = true)
