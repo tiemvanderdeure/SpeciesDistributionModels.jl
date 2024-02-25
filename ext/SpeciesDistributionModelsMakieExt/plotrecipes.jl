@@ -1,3 +1,11 @@
+function _model_controls!(fig, ensemble)
+    toggles = [Makie.Toggle(fig, active = true) for i in 1:Base.length(ensemble)]
+    labels = [Makie.Label(fig, String(key)) for key in SDM.model_names(ensemble)]
+    g = Makie.grid!(hcat(toggles, labels), tellheight = false)
+    return g, toggles
+end
+
+
 function Makie.boxplot(ev::SDMensembleEvaluation, measure::Symbol)
     modelnames = Base.string.(model_names(ev.ensemble))
     f = Makie.Figure()
@@ -35,31 +43,30 @@ struct Sens end
 struct Spec end
 struct TSS end
 
-xdata(::Any, rates) = rates.thresholds
-
-xdata(::ROC, rates) = rates.fpr
-ydata(::ROC, rates) = rates.tpr
-ydata(::Sens, rates) = rates.tpr
-ydata(::Spec, rates) = rates.tnr
-ydata(::TSS, rates) = (rates.tpr .+ rates.tnr .- 1)
+xdata(::ROC, conf_mats) = SDM.sensitivity.(conf_mats)
+ydata(::ROC, conf_mats) = 1 .- SDM.selectivity.(conf_mats)
+ydata(::Sens, conf_mats) = SDM.sensitivity.(conf_mats)
+ydata(::Spec, conf_mats) = SDM.selectivity.(conf_mats)
+ydata(::TSS, conf_mats) = SDM.kappa.(conf_mats)
 
 
-function interactive_evaluation(ensemble)
-    idx_by_model = NamedTuple{keys(ensemble.models)}(
-        [findall(getindex.(ensemble.trained_models, :model_key) .== key) for key in keys(ensemble.models)]
-    )
+function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
+    xdata(::Any, conf_mats) = thresholds
+
+    idx_by_model = map(enumerate(ensemble)) do (i, e)
+        fill(i, Base.length(e))
+    end |> NamedTuple{Tuple(model_names(ensemble))}
 
     n_models = length(idx_by_model)
 
-    test_predictions = predict(ensemble, :test)
-    test_preds_by_model = map(idx_by_model) do idx
-        y_hat = vcat([test_predictions[id].y_hat for id in idx]...)
-        y = vcat([test_predictions[id].y for id in idx]...)
-        return(; y_hat, y)
+    conf_mats = mapreduce(hcat, ensemble) do gr
+        map(gr) do sdm_machine
+            rows = sdm_machine.test_rows
+            y_hat = SDM.MLJBase.predict(sdm_machine.machine; rows)
+            y = data(sdm_machine).response[rows]
+            _conf_mats_from_thresholds(SDM.MLJBase.pdf.(y_hat, true), y, thresholds)
+        end
     end
-
-    all_rates = map(pred -> classification_rates(pred.y_hat, pred.y), test_predictions)
-    rates_by_model = map(pred -> classification_rates(pred.y_hat, pred.y), test_preds_by_model)
 
     # Figure itself
     fig = Figure()
@@ -71,40 +78,40 @@ function interactive_evaluation(ensemble)
 
     funcs = [Sens(),Spec(), ROC(), TSS()]
     dropdown = Makie.Menu(controls[1,1],
-        options = zip(["Sensitivity", "Specificity", "ROC", "TSS"], funcs),
+        options = zip(["Sensitivity", "Selectivity", "ROC", "TSS"], funcs),
         default = "ROC", tellheight = false)
 
     all_models_toggle = Makie.Toggle(fig, active = false)
     controls[2, 1] = Makie.hgrid!(all_models_toggle, Label(fig, "Show individuals models"))
 
-    toggles = [Makie.Toggle(fig, active = true) for i in 1:length(idx_by_model)]
-    labels = [Makie.Label(fig, String(key)) for key in keys(idx_by_model)]
-
     Makie.Label(controls[3, 1], "Select models"; font = :bold)
-    controls[4, 1] = Makie.grid!(hcat(toggles, labels), tellheight = false)
+    controls[4,1], toggles = _model_controls!(fig, ensemble)
 
     # Data to plot
-    plot_data_avg = map(eachindex(rates_by_model)) do idx
-        x = Makie.lift(s -> xdata(s, rates_by_model[idx]), dropdown.selection)
-        y = Makie.lift(s -> ydata(s, rates_by_model[idx]), dropdown.selection)
+    plot_data_all = map(conf_mats) do conf_mat
+        x = Makie.lift(f -> xdata(f, conf_mat), dropdown.selection)
+        y = Makie.lift(f -> ydata(f, conf_mat), dropdown.selection)
         return(x, y)
     end
 
-    plot_data_all = map(eachindex(all_rates)) do idx
-        x = Makie.lift(f -> xdata(f, all_rates[idx]), dropdown.selection)
-        y = Makie.lift(f -> ydata(f, all_rates[idx]), dropdown.selection)
-        return(x, y)
+    plot_data_avg = map(eachcol(plot_data_all)) do data
+        x = map(getindex.(data, 1)...) do d...
+            Statistics.mean(d)
+        end
+        y = map(getindex.(data, 2)...) do d...
+            Statistics.mean(d)
+        end
+        return (x, y)
     end
 
     ls_average = [Makie.lines!(ax, d[1], d[2], color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 3) for (i, d) in enumerate(plot_data_avg)]
     ls_members = [
-        [
-            Makie.lines!(ax, plot_data_all[j][1], plot_data_all[j][2];
-            color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 1) for j in idxs
-        ] for (i, idxs) in enumerate(idx_by_model)
+        Makie.lines!(ax, plot_data_all[r, c][1], plot_data_all[r, c][2];
+            color = c, colormap = :turbo, colorrange = (1, n_models), linewidth = 1)
+        for r in 1:size(plot_data_all, 1), c in 1:size(plot_data_all, 2)
     ]
 
-    map(ls_average, ls_members, toggles) do line, lines, toggle
+    map(ls_average, eachcol(ls_members), toggles) do line, lines, toggle
         Makie.connect!(line.visible, toggle.active)
         lines_active = lift((t, t2) -> t & t2, (toggle.active), (all_models_toggle.active))
 
@@ -113,48 +120,77 @@ function interactive_evaluation(ensemble)
         end
     end
 
-    return fig #should return FigureAxisPlot somehow?
+    return fig 
 end
-#=
+
 # Plot output from shapley
-function interactive_response_curves(shapley::SDMshapley)
-    f = Figure()
-    ax = Axis(f[1,1], ylabel = "shapley value", xlabel = "variable value")
+function SDM.interactive_response_curves(expl::SDMensembleExplanation)
+    fig = Figure()
+    controls = fig[1,2] = GridLayout()
+    ax = Axis(fig[1,1], ylabel = "Shapley value", xlabel = "Variable value")
 
-    preds = shapley.ensemble.predictors
-
-    var_menu = Makie.Menu(f[1, 2], options = zip(String.(preds), preds), tellheight = false, tellwidth = true, width = 100)
-    indices = Makie.Observable(1:length(shapley))
-
-    var_indices = lift((x,y) -> (x,y), var_menu.selection, indices)
-
-    function update(var, indices)
-        ys[] = collect(Base.Iterators.flatten(shap[var] for shap in shapley.values[indices]))
-        xs[] = repeat(shapley.ensemble.data.predictor[var], size(indices, 1))
-
-        us[] = range(extrema(xs[])...; length = 100)
-
-        smooth_model = Loess.loess(xs[], ys[]; span = Statistics.std(xs[])/2, degree = 2)
-        res_model = Loess.loess(xs[], abs.(Loess.residuals(smooth_model)); span = Statistics.std(xs[])/2, degree = 2)
-
-        smooth_ys[] = Loess.predict(smooth_model, us[])
-        res_ys = Loess.predict(res_model, us[])
-        lower_ys[] = smooth_ys[] .- res_ys
-        upper_ys[] = smooth_ys[] .+ res_ys
-
-        Makie.reset_limits!(ax)
+    preds = Base.keys(SDM.data(expl))
+    machine_group_indices = mapreduce(vcat, enumerate(expl)) do (i, g)
+        fill(i, length(g))
     end
 
-    ys, xs, us, smooth_ys, lower_ys, upper_ys = (Makie.Observable{Vector{Float64}}([]) for i in 1:6)
+    var_menu = Makie.Menu(controls[1, 1], options = zip(String.(preds), preds), tellheight = false, tellwidth = true, width = 100)
+    var = var_menu.selection
+    Makie.Label(controls[2, 1], "Select models"; font = :bold)
+    controls[3,1], toggles = _model_controls!(fig, expl.ensemble)
+    any_toggle = lift((t...) -> any(t), [t.active for t in toggles]...)
 
-    update(var_menu.selection[], indices[])
+    # data
+    ys = mapreduce(vcat, expl) do gr_expl
+        map(SDM.machine_explanations(gr_expl)) do me
+            @lift me.values[$var]
+        end
+    end
 
-    scatter!(xs, ys, markersize = 3)
-    lines!(ax, us, smooth_ys, linewidth = 7, color = :black, alpha = 1)
-    Makie.band!(ax, us, lower_ys, upper_ys, alpha = 0.5)
+    xs = @lift SDM.data(expl)[$var]
+    us = Makie.lift(xs -> range(extrema(xs)...; length = 100), xs)
 
-    Makie.on(x -> update(x...), var_indices)
+    scatters = map(ys) do ys
+        scatter!(xs, ys, markersize = 3, color = :lightblue) 
+    end
 
-    f
+    map(machine_group_indices, scatters) do m_idx, scatter
+        Makie.connect!(scatter.visible, toggles[m_idx].active)
+    end
+
+    function update()
+        indices = map(m_idx -> toggles[m_idx].active[], machine_group_indices)
+        @show indices
+        if any(indices)
+            newxs = repeat(SDM.data(expl)[var[]], Base.sum(indices))
+            newys = mapreduce(vcat, SDM.machine_explanations(expl)[indices]) do me
+                    me.values[var[]]
+                end
+        
+            smooth_model = Loess.loess(newxs, newys; span = Statistics.std(xs[])/2, degree = 2)
+            res_model = Loess.loess(newxs, abs.(Loess.residuals(smooth_model)); span = Statistics.std(newxs)/2, degree = 2)
+
+            smooth_ys[] = Loess.predict(smooth_model, us[])
+            res_ys = Loess.predict(res_model, us[])
+            lower_ys[] = smooth_ys[] .- res_ys
+            upper_ys[] = smooth_ys[] .+ res_ys
+
+            Makie.reset_limits!(ax)
+        end
+    end
+
+    smooth_ys, lower_ys, upper_ys = (Makie.Observable{Vector{Float64}}([]) for i in 1:6)
+
+    update()
+
+    loess_l = Makie.lines!(ax, us, smooth_ys, linewidth = 7, color = :black, alpha = 1)
+    loess_b = Makie.band!(ax, us, lower_ys, upper_ys, alpha = 0.5)
+    Makie.connect!(loess_l.visible, any_toggle)
+    Makie.connect!(loess_b.visible, any_toggle)
+
+
+    Makie.on(x -> update(), var_menu.selection)
+    [Makie.on(x -> update(), t.active) for t in toggles]
+
+    fig
 end
-=#
