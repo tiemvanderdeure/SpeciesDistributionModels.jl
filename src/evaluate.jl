@@ -120,6 +120,7 @@ function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMensembleEvalua
     PrettyTables.pretty_table(io, merge((; model = models),  train_scores))
 end
 
+
 ## Core evaluator
 # internal method to get a vector of scores from y_hats, ys, and a namedtuple of measures
 function _evaluate(y_hat::MLJBase.UnivariateFiniteArray, y::CategoricalArrays.CategoricalArray, measures)
@@ -129,13 +130,7 @@ function _evaluate(y_hat::MLJBase.UnivariateFiniteArray, y::CategoricalArrays.Ca
     if any(map(kind -> kind == StatisticalMeasures.LearnAPI.LiteralTarget(), kinds_of_proxy))
         scores = pdf.(y_hat, true)
         thresholds = unique(scores)
-        levels = [false, true]
-        # use the internal method to avoid constructing indexer every time
-        indexer = StatisticalMeasures.LittleDict(levels[i] => i for i in eachindex(levels)) |> StatisticalMeasures.freeze
-        conf_mats = broadcast(thresholds) do t
-            y_ = boolean_categorical(scores .>= t)
-            StatisticalMeasures.ConfusionMatrices._confmat(y_, y, indexer, levels, false)
-        end    
+        conf_mats = _conf_mats_from_thresholds(scores, y, thresholds)
     else
         conf_mats = nothing
     end
@@ -153,6 +148,17 @@ function _evaluate(y_hat::MLJBase.UnivariateFiniteArray, y::CategoricalArrays.Ca
     end
 end
 
+function _conf_mats_from_thresholds(scores, y, thresholds)
+    levels = [false, true]
+    # use the internal method to avoid constructing indexer every time
+    indexer = StatisticalMeasures.LittleDict(levels[i] => i for i in eachindex(levels)) |> StatisticalMeasures.freeze
+    broadcast(thresholds) do t
+        y_ = boolean_categorical(scores .>= t)
+        StatisticalMeasures.ConfusionMatrices._confmat(y_, y, indexer, levels, true)
+    end    
+end
+
+#### Evaluate methods ####
 # Evaluate a single SDMmachine
 function _evaluate(sdm_machine::SDMmachine, measures::NamedTuple)
     results = map((train = sdm_machine.train_rows, test = sdm_machine.test_rows)) do rows
