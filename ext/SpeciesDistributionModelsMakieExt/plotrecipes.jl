@@ -1,7 +1,7 @@
 function _model_controls!(fig, ensemble)
     toggles = [Makie.Toggle(fig, active = true) for i in 1:Base.length(ensemble)]
     labels = [Makie.Label(fig, String(key)) for key in SDM.model_names(ensemble)]
-    g = Makie.grid!(hcat(toggles, labels), tellheight = false)
+    g = Makie.grid!(hcat(toggles, labels))
     return g, toggles
 end
 
@@ -43,8 +43,8 @@ struct Sens end
 struct Spec end
 struct TSS end
 
-xdata(::ROC, conf_mats) = SDM.sensitivity.(conf_mats)
-ydata(::ROC, conf_mats) = 1 .- SDM.selectivity.(conf_mats)
+xdata(::ROC, conf_mats) = 1 .- SDM.selectivity.(conf_mats)
+ydata(::ROC, conf_mats) = SDM.sensitivity.(conf_mats)
 ydata(::Sens, conf_mats) = SDM.sensitivity.(conf_mats)
 ydata(::Spec, conf_mats) = SDM.selectivity.(conf_mats)
 ydata(::TSS, conf_mats) = SDM.kappa.(conf_mats)
@@ -134,11 +134,13 @@ function SDM.interactive_response_curves(expl::SDMensembleExplanation)
         fill(i, length(g))
     end
 
-    var_menu = Makie.Menu(controls[1, 1], options = zip(String.(preds), preds), tellheight = false, tellwidth = true, width = 100)
+    var_menu = Makie.Menu(controls[1, 1], options = zip(String.(preds), preds), tellheight = false, valign = :center)
     var = var_menu.selection
     Makie.Label(controls[2, 1], "Select models"; font = :bold)
     controls[3,1], toggles = _model_controls!(fig, expl.ensemble)
     any_toggle = lift((t...) -> any(t), [t.active for t in toggles]...)
+    Makie.Label(controls[4,1], "Smoothness"; font = :bold)
+    span_slider = Makie.Slider(controls[5,1], range = 0:0.01:1, startvalue = 0.5)
 
     # data
     ys = mapreduce(vcat, expl) do gr_expl
@@ -160,15 +162,15 @@ function SDM.interactive_response_curves(expl::SDMensembleExplanation)
 
     function update()
         indices = map(m_idx -> toggles[m_idx].active[], machine_group_indices)
-        @show indices
         if any(indices)
-            newxs = repeat(SDM.data(expl)[var[]], Base.sum(indices))
+            newxs = repeat(xs[], Base.sum(indices))
             newys = mapreduce(vcat, SDM.machine_explanations(expl)[indices]) do me
                     me.values[var[]]
                 end
-        
-            smooth_model = Loess.loess(newxs, newys; span = Statistics.std(xs[])/2, degree = 2)
-            res_model = Loess.loess(newxs, abs.(Loess.residuals(smooth_model)); span = Statistics.std(newxs)/2, degree = 2)
+
+            span = span_slider.value[]
+            smooth_model = Loess.loess(newxs, newys; span, degree = 2)
+            res_model = Loess.loess(newxs, abs.(Loess.residuals(smooth_model)); span, degree = 2)
 
             smooth_ys[] = Loess.predict(smooth_model, us[])
             res_ys = Loess.predict(res_model, us[])
@@ -190,6 +192,7 @@ function SDM.interactive_response_curves(expl::SDMensembleExplanation)
 
 
     Makie.on(x -> update(), var_menu.selection)
+    Makie.on(x -> update(), span_slider.value)
     [Makie.on(x -> update(), t.active) for t in toggles]
 
     fig
