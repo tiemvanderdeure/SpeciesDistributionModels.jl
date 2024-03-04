@@ -16,14 +16,14 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
         presencedata, backgrounddata;
         models = models, resampler = SDM.MLJBase.CV(; shuffle = true, nfolds = 5, rng), threaded = false
     )
-
-    evaluation = SDM.evaluate(ensemble)
+    evaluation = SDM.evaluate(ensemble; validation = (presencedata, backgrounddata))
+    evaluation2 = SDM.evaluate(ensemble)
     @test evaluation isa SDM.SDMensembleEvaluation
     @test evaluation[1] isa SDM.SDMgroupEvaluation
     @test evaluation[1][1] isa SDM.SDMmachineEvaluation
     @test evaluation.measures isa NamedTuple
     mach_evals = SDM.machine_evaluations(evaluation)
-    @test mach_evals isa NamedTuple{(:train, :test)}
+    @test mach_evals isa NamedTuple{(:train, :test, :validation)}
     @test mach_evals.train isa NamedTuple{(keys(evaluation.measures))}
 
     machine_aucs = SDM.machine_evaluations(evaluation).test.auc

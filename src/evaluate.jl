@@ -1,7 +1,7 @@
 struct SDMmachineEvaluation
     sdm_machine::SDMmachine
-    measures
-    results
+    measures::NamedTuple
+    results::NamedTuple
 end
 
 struct SDMgroupEvaluation <: AbstractVector{SDMmachineEvaluation}
@@ -30,6 +30,8 @@ Base.getindex(group::SDMgroupEvaluation, i) = group.machine_evaluations[i]
 Base.size(ensemble::SDMensembleEvaluation) = Base.size(ensemble.group_evaluations)
 Base.size(group::SDMgroupEvaluation) = Base.size(group.machine_evaluations)
 
+evaluation_sets(macheval::SDMmachineEvaluation) = keys(macheval.results)
+evaluation_sets(e::SDMgroupOrEnsembleEvaluation) = evaluation_sets(e[1])
 """
     machine_evaluations(eval)
 
@@ -37,30 +39,30 @@ Base.size(group::SDMgroupEvaluation) = Base.size(group.machine_evaluations)
     `SDMgroupEvaluation` or an `SDMensembleEvaluation`.
 
     The return type is a nested structure of `NamedTuple`s. 
-    The `NamedTuple` returned has two keys `train` and `test`, which each have keys 
-    corresponding to the measures specified in [`evaluate`](@ref).
+    The `NamedTuple` returned has keys corresponding to the evaluation datasets (a subset of :train, :test, and :validation), 
+    which each have keys corresponding to the measures specified in [`evaluate`](@ref).
 
     ## Example
     ```julia
     evaluation = SDM.evaluate(ensemble; measures = (; accuracy, auc))
     machine_aucs = SDM.machine_evaluations(evaluation).train.auc
     ```
-
-
 """
 machine_evaluations
 
 function machine_evaluations(groupeval::SDMgroupEvaluation)
-    map((:train, :test)) do set
+    sets = evaluation_sets(groupeval)
+    map(sets) do set
         map(keys(groupeval.measures)) do key
             map(groupeval) do e
                 e.results[set][key].score
             end
         end |> NamedTuple{keys(groupeval.measures)}
-    end |> NamedTuple{(:train, :test)}
+    end |> NamedTuple{sets}
 end
 function machine_evaluations(ensembleeval::SDMensembleEvaluation)
-    map((:train, :test)) do set
+    sets = keys(ensembleeval[1][1].results)
+    map(sets) do set
         map(keys(ensembleeval.measures)) do key
             mapreduce(vcat, ensembleeval) do groupeval
                 map(groupeval) do e
@@ -68,7 +70,7 @@ function machine_evaluations(ensembleeval::SDMensembleEvaluation)
                 end
             end
         end |> NamedTuple{keys(ensembleeval.measures)}
-    end |> NamedTuple{(:train, :test)}
+    end |> NamedTuple{sets}
 end
 
 ## Show methods
@@ -76,11 +78,13 @@ function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMmachineEvaluat
     println(io, "SDMmachineEvaluation")
 
     measures = collect(keys(evaluation.measures))
-    train_scores = round.(getfield.(collect(evaluation.results.train), :score); digits = 2)
-    test_scores = round.(getfield.(collect(evaluation.results.test), :score); digits = 2)
-
-    table_cols = hcat(measures, train_scores, test_scores)
-    header = (["measure", "train_score", "test_score"])
+    sets = evaluation_sets(evaluation)
+    scores = map(sets) do s
+        round.(getfield.(collect(evaluation.results[s]), :score); digits = 2)
+    end
+    
+    table_cols = hcat(measures, scores...)
+    header = (["measure"; string.(sets)...])
     PrettyTables.pretty_table(io, table_cols; header = header)
 end
 
@@ -105,19 +109,15 @@ function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMensembleEvalua
     scores = machine_evaluations.(evaluation)
     # get mean test and train from each group for each measure.
     # then invert to a namedtuple where measures are keys
-    test_scores = map(scores) do score
-        map(Statistics.mean, score.test)
-    end |> Tables.columntable
-    train_scores = map(scores) do score
-        map(Statistics.mean, score.train)
-    end |> Tables.columntable
-    
     println(io, "$(typeof(evaluation)) with $(length(measures)) performance measures")
 
-    println(io, "Testing data")
-    PrettyTables.pretty_table(io, merge((; model = models),  test_scores))
-    println(io, "Training data")
-    PrettyTables.pretty_table(io, merge((; model = models),  train_scores))
+    for k in keys(scores[1])
+        println(io, string(k))
+        s = map(scores) do score
+            map(Statistics.mean, getfield(score, k))
+        end |> Tables.columntable
+        PrettyTables.pretty_table(io, merge((; model = models),  s))
+    end
 end
 
 
@@ -159,11 +159,29 @@ function _conf_mats_from_thresholds(scores, y, thresholds)
 end
 
 #### Evaluate methods ####
+_ev_predict(sdm_machine, data::AbstractVector{<:Integer}) = MLJBase.predict(sdm_machine.machine; rows = data)
+_ev_predict(sdm_machine, data) = MLJBase.predict(sdm_machine, data)
 # Evaluate a single SDMmachine
-function _evaluate(sdm_machine::SDMmachine, measures::NamedTuple)
-    results = map((train = sdm_machine.train_rows, test = sdm_machine.test_rows)) do rows
-        y_hat = MLJBase.predict(sdm_machine.machine, rows = rows)
-        y = data(sdm_machine).response[rows]
+function _evaluate(sdm_machine::SDMmachine, measures::NamedTuple, train, test, validation)
+    machdata = data(sdm_machine)
+    # set up namedtuple with data/rows, throw out if nothing/false
+    d_X = (;)
+    d_y = (;)
+    if train
+        d_X = merge(d_X, (;train = Tables.subset(machdata.predictor, sdm_machine.train_rows)))
+        d_y = merge(d_y, (;train = machdata.response[sdm_machine.train_rows]))
+    end
+    if test
+        d_X = merge(d_X, (;test =  Tables.subset(machdata.predictor, sdm_machine.test_rows)))
+        d_y = merge(d_y, (;test = machdata.response[sdm_machine.test_rows]))
+    end
+    if !isempty(validation)
+        d_X = merge(d_X, (;validation = validation[1]))
+        d_y = merge(d_y, (;validation = validation[2]))
+    end
+
+    results = map(d_X, d_y) do X, y
+        y_hat = MLJBase.predict(sdm_machine.machine, X)
         _evaluate(y_hat, y, measures)
     end
 
@@ -171,8 +189,8 @@ function _evaluate(sdm_machine::SDMmachine, measures::NamedTuple)
 end
 
 # Evaluate a group
-function _evaluate(group::SDMgroup, measures)
-    machine_evaluations = map(m -> (evaluate(m; measures = measures)), group)
+function _evaluate(group::SDMgroup, measures, train, test, validation)
+    machine_evaluations = map(m -> (_evaluate(m, measures, train, test, validation)), group)
 
     # average group prediction
     p = predict(group, data(group).predictor, reducer = Statistics.mean)
@@ -189,8 +207,8 @@ function _evaluate(group::SDMgroup, measures)
     )
 end
 
-function _evaluate(ensemble::SDMensemble, measures)
-    group_evaluations = map(m -> (evaluate(m; measures = measures)), ensemble)
+function _evaluate(ensemble::SDMensemble, measures, train, test, validation)
+    group_evaluations = map(m -> (_evaluate(m, measures, train, test, validation)), ensemble)
 
     # average ensemble prediction
     p = predict(ensemble, data(ensemble).predictor, reducer = Statistics.mean)
