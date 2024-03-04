@@ -23,7 +23,7 @@ function _predict(m::SDMmachine, data)
     # predict
     prediction = MLJBase.predict(m.machine.old_model, m.machine.fitresult, data)
     # convert to Floats
-    MLJBase.pdf.(prediction, true)
+    return MLJBase.pdf.(prediction, true)
 end
 
 function _reformat_and_predict(m::SDMmachine, data, clamp)
@@ -31,52 +31,56 @@ function _reformat_and_predict(m::SDMmachine, data, clamp)
 end
 
 ## Group level _predict methods
-function _predict(g::SDMgroup, data, ::Nothing)
-    pr = map(m -> _predict(m, data), g)
+function _predict(g::SDMgroup, data, ::Nothing, resource::AbstractCPU)
+    pr = _map(resource)(m -> _predict(m, data), g)
     return NamedTuple{Tuple(machine_keys(g))}(pr)
 end
 
-function _predict(g::SDMgroup, data, reducer::Function)
-    pr = map(m -> _predict(m, data), g)
-    return map((d...) -> reducer(d), pr...)
+function _reduce(reducer::F, pr::AbstractVector{<:Vector{<:AbstractFloat}}) where F
+    map((d...) -> reducer(d), pr...) 
+end
+function _predict(g::SDMgroup, data, reducer::Function, resource::AbstractCPU) 
+    pr = _map(resource)(m -> _predict(m, data), g)
+    return  map((d...) -> reducer(d), pr...)
 end
 
-function _reformat_and_predict(g::SDMgroup, data, clamp, reducer)
-    _predict(g, _reformat_data(first(g), data, clamp), reducer)
+function _reformat_and_predict(g::SDMgroup, data, clamp, reducer::F, resource::AbstractCPU) where F
+    _predict(g, _reformat_data(first(g), data, clamp), reducer, resource)
 end
 
 # ensemble-level methods
 # For ensemble, there are no _predict methods. Datas has to be reformatted for each group
-function _reformat_and_predict(e::SDMensemble, data, clamp::Bool, ::Nothing, ::Bool)
-    mapreduce(
-        g -> _reformat_and_predict(g, data, clamp, nothing), 
-        merge, 
+function _reformat_and_predict(e::SDMensemble, data, clamp::Bool, ::Nothing, ::Bool, resource::AbstractCPU)
+    pr = _map(resource)(
+        g -> _reformat_and_predict(g, data, clamp, nothing, resource), 
         e
     )
+    merge(pr...)
 end
 
-function _reformat_and_predict(e::SDMensemble, data, clamp::Bool, reducer::Function, by_group::Bool)
+function _reformat_and_predict(e::SDMensemble, data, clamp::Bool, reducer::Function, by_group::Bool, resource::AbstractCPU)
     if by_group
         # pass the reducer to each group, then combine into a namedtuple
-        group_pr = (map(g -> _reformat_and_predict(g, data, clamp::Bool, reducer), e))
+        group_pr = _map(resource)(g -> _reformat_and_predict(g, data, clamp::Bool, reducer, resource), e)
         NamedTuple{Tuple(model_names(e))}(group_pr)
     else
         # predict without reducing, then apply the reducer
-        pr = mapreduce(g -> _reformat_and_predict(g, data, clamp::Bool, nothing), merge, e)
-        map((d...) -> reducer(d), pr...)
+        pr = _map(resource)(g -> _reformat_and_predict(g, data, clamp::Bool, nothing, resource), e)
+        pr_m = merge(pr...)
+        map((d...) -> reducer(d), pr_m...)
     end
 end
 
 # Dispatch on RasterStacks
-_reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Function, by_group::Bool) = 
-    _reformat_and_predict_raster(e, rs, clamp, reducer, by_group)
-_reformat_and_predict(g::SDMgroup, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Union{<:Function, <:Nothing}) = 
-    _reformat_and_predict_raster(g, rs, clamp, reducer)
-_reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Bool) =
-    _reformat_and_predict_raster(m, rs, clamp)
+_reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Function, by_group::Bool, resource::AbstractCPU) = 
+    _reformat_and_predict_raster(e, rs, clamp, reducer, by_group, resource)
+_reformat_and_predict(g::SDMgroup, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Union{<:Function, <:Nothing}, resource::AbstractCPU) = 
+    _reformat_and_predict_raster(g, rs, clamp, reducer, resource)
+_reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Bool, resource::AbstractCPU) =
+    _reformat_and_predict_raster(m, rs, clamp, resource)
 
 function _reformat_and_predict_raster(s::Union{<:SDMensemble, SDMgroup, SDMmachine}, rs::Rasters.AbstractRasterStack, args...)
-    missing_mask = Rasters.boolmask(rs; alllayers = true)
+    missing_mask = Rasters.boolmask(rs)
     d = rs[missing_mask]
     pr =  _reformat_and_predict(s, d, args...)
     return _build_raster(missing_mask, pr)

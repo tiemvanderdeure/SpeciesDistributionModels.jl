@@ -34,24 +34,27 @@ function sdm(
     Base.intersect(predictors, Tables.schema(absences).names) == predictors || 
         error("The absence data does not contain all predictors specified")
 
-    backend = threaded ? CPUThreads() : CPU1()
+    backend = cpu_backend(threaded)
 
     _fit_sdm_ensemble(presences, absences, models, [resampler], predictors, verbosity, backend)
 end
 
 """
-    evaluate(x; measures)
+    evaluate(x; measures, train = true, test = true, [validation])
 
 Evaluate `x`, which could be a SDMmachine, SDMgroup, or SDMensemble, 
 by applying the measures provided to the data used to built an ensemble, 
 and return an evaluation object.
 
-`measures` is a `NamedTuple` of measures. The keys are used to identify the measures.
+## Keywords
+- `measures` is a `NamedTuple` of measures. The keys are used to identify the measures.
 This defaults to using auc, log_loss, and kappa.
-
 For threshold-dependent measures, the highest score as well as the threshold at which the highest scores is reached are reported.
-
 A list of measurse is available here: https://juliaai.github.io/StatisticalMeasures.jl/dev/auto_generated_list_of_measures/#aliases. However, note that not all measures are useful.
+- `train`: a `Bool` that indicates whether to evaluate on the training data. Defaults to `true`
+- `test`: a `Bool` that indicates whether to evaluate on the test data.Defaults to `true`
+- `validation`: optionally, provide a separate validation dataset. 
+Data should be provided as a `Tuple` with presences as the first field and absences as the second.
 """
 function evaluate( # Define this as an extension of MLJBase.evaluate??
     x;
@@ -60,9 +63,21 @@ function evaluate( # Define this as an extension of MLJBase.evaluate??
         StatisticalMeasures.auc, 
         StatisticalMeasures.log_loss, 
         StatisticalMeasures.kappa
-    )
+    ),
+    test = true,
+    train = true,
+    validation::Tuple = ()
 )
-    _evaluate(x, measures)
+    test || train || isempty(validation) || error("No data to test. Either test or train must be true, or validation data must be provided")
+    if !isempty(validation)
+        length(validation) == 2 || error("Validation data should be two elements, with the first one presence and the second one background/absence points")
+        v_p = Tables.rowtable(validation[1]); v_bg = Tables.rowtable(validation[2])
+        validation_X = [v_p; v_bg]
+        validation_y = boolean_categorical([trues(length(v_p)); falses(length(v_bg))])
+        validation = (validation_X, validation_y)
+    end
+
+    _evaluate(x, measures, test, train, validation)
 end
 
 
@@ -82,29 +97,31 @@ function explain(e::SDMensemble; method, data = data(e).predictor, predictors = 
 end
 
 """
-    predict(SDMobject, newdata; clamp = false, [reducer], [by_group])
+    predict(SDMobject, newdata; clamp = false, threaded = true, [reducer], [by_group])
 
 Use an `SDMmachine`, `SDMgroup`, or `SDMensemble` to predict habitat suitability for some data, optionally summarized for the entire ensemble, or for each `SDMgroup`.
 
-`newdata` can be either a `RasterStack`, or some other data which must be compatible with Tables.jl. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
+`newdata` can be either a `RasterStack`, or a Tables.jl.compatible object. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
 
-If `clamp` is set to `true`, the predictions are clamped to the interval seen during of `SDMobject`
+## Keywords
+- `clamp`: if `true`, the predictions are clamped to the interval seen during training of `SDMobject`. Defaults to `false`
+- `threaded`: if `true`, run multithreaded. Defaults to `true`.
+- `reducer`: Optionally provide a `Function` to summarize the output. The function should take an vector of values and return a single value. Typical examples are `Statistics.mean` or `Statistics.median`.
+- `by_group` is set to `true`, the data is reduced for each `SDMgroup`, if it is set to `false` (the default), it reduced across the entire ensemble.
 
-Optionally provide a function to summarize the output as the `reducer` argument. This would typically be `Statistics.mean` or `Statistics.median`.
-If `by_group` is set to `true`, the data is reduced for each `SDMgroup`, if it is set to `false` (the default), it reduced across the entire ensemble.
-
-If `newdata` is a `RasterStack`, the `predict` returns a `Raster`; otherwise, it returns a `NamedTuple` of `Vectors`
-Habitat suitability is always reported as a floating-point number between 0 and 1.
+## Returns
+If `newdata` is a `RasterStack`, the `predict` returns a `Raster`; otherwise, it returns a `NamedTuple` of `Vectors`, with 
+habitat suitability represented by a floating-point number between 0 and 1.
 """
 function predict(m::SDMmachine, d; clamp = false)
     _reformat_and_predict(m, d, clamp)
 end
-function predict(g::SDMgroup, d; clamp = false, reducer = nothing)
-    _reformat_and_predict(g, d, clamp, reducer)
+function predict(g::SDMgroup, d; clamp = false, threaded = true, reducer = nothing)
+    _reformat_and_predict(g, d, clamp, reducer, cpu_backend(threaded))
 end
-function predict(e::SDMensemble, d; clamp = false, reducer = nothing, by_group = false)
+function predict(e::SDMensemble, d; clamp = false, reducer = nothing, by_group = false, threaded = true)
     by_group && isnothing(reducer) && error("If by_group is true, reducer must be specified")
-    _reformat_and_predict(e, d, clamp, reducer, by_group)
+    _reformat_and_predict(e, d, clamp, reducer, by_group, cpu_backend(threaded))
 end
 
 

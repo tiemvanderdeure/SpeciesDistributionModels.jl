@@ -13,5 +13,6 @@ function _get_predictor_names(p, a)
     return predictors
 end
 
+cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
 _map(::CPU1) = Base.map
 _map(::CPUThreads) = ThreadsX.map

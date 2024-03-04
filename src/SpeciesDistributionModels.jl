@@ -7,7 +7,7 @@ import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess
 using MLJBase: pdf
 using Rasters: Raster, RasterStack, Band
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
-using ComputationalResources: CPU1, CPUThreads
+using ComputationalResources: CPU1, CPUThreads, AbstractCPU
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy
