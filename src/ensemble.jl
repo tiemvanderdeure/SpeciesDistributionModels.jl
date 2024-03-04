@@ -1,10 +1,10 @@
 # Machines have 1 machine, plus metadata
 struct SDMmachine
-    machine
+    machine::MLJBase.Machine
     predictors::NTuple{<:Any, Symbol}
-    fold
-    train_rows
-    test_rows
+    fold::Int
+    train_rows::Vector{Int}
+    test_rows::Vector{Int}
 end
 
 # Groups have multiple machines with identical model and resampler
@@ -23,7 +23,7 @@ end
 
 SDMgroupOrEnsemble = Union{SDMgroup, SDMensemble}
 
-# Rather than storing it in ensemble, access it like this? It looks like args stores exactly the data as it is given to the machine
+# args field stores exactly the data as it is given to the machine
 data(mach::SDMmachine) = (predictor = mach.machine.args[1].data, response = mach.machine.args[2].data)
 data(group::SDMgroup) = data(group[1])
 data(ensemble::SDMensemble) = data(ensemble[1])
@@ -189,10 +189,7 @@ function _fit_sdm_ensemble(
 
     # merge presence and absence data into one namedtuple of vectors
     predictor_values = NamedTuple{Tuple(predictors)}([[Tables.columns(absence)[var]; Tables.columns(presences)[var]] for var in predictors])
-    response_values = CategoricalArrays.categorical(
-        [falses(n_absence); trues(n_presence)]; 
-        levels = [false, true], ordered = false
-    )
+    response_values = boolean_categorical([falses(n_absence); trues(n_presence)])
 
     models_ = _givenames(models)
     resamplers_ = _givenames(resamplers)
