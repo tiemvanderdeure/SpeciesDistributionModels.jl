@@ -36,15 +36,12 @@ function _predict(g::SDMgroup, data, ::Nothing, resource::AbstractCPU)
     return NamedTuple{Tuple(machine_keys(g))}(pr)
 end
 
-function _reduce(reducer::F, pr::AbstractVector{<:Vector{<:AbstractFloat}}) where F
-    map((d...) -> reducer(d), pr...) 
-end
 function _predict(g::SDMgroup, data, reducer::Function, resource::AbstractCPU) 
     pr = _map(resource)(m -> _predict(m, data), g)
     return  map((d...) -> reducer(d), pr...)
 end
 
-function _reformat_and_predict(g::SDMgroup, data, clamp, reducer::F, resource::AbstractCPU) where F
+function _reformat_and_predict(g::SDMgroup, data, clamp, reducer, resource::AbstractCPU)
     _predict(g, _reformat_data(first(g), data, clamp), reducer, resource)
 end
 
@@ -73,6 +70,8 @@ end
 
 # Dispatch on RasterStacks
 _reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Function, by_group::Bool, resource::AbstractCPU) = 
+    _reformat_and_predict_raster(e, rs, clamp, reducer, by_group, resource)
+_reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Nothing, by_group::Bool, resource::AbstractCPU) = 
     _reformat_and_predict_raster(e, rs, clamp, reducer, by_group, resource)
 _reformat_and_predict(g::SDMgroup, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Union{<:Function, <:Nothing}, resource::AbstractCPU) = 
     _reformat_and_predict_raster(g, rs, clamp, reducer, resource)
