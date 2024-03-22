@@ -13,7 +13,6 @@ struct SDMgroup <: AbstractVector{SDMmachine}
     model
     resampler
     model_name
-    resampler_name
 end
 
 # Ensembles have multiple groups with potentially different models and different resamplers, but identical data
@@ -25,9 +24,9 @@ SDMgroupOrEnsemble = Union{SDMgroup, SDMensemble}
 
 # args field stores exactly the data as it is given to the machine
 data(mach::SDMmachine) = (predictor = mach.machine.args[1].data, response = mach.machine.args[2].data)
-data(group::SDMgroup) = data(group[1])
-data(ensemble::SDMensemble) = data(ensemble[1])
-
+data(s::SDMgroupOrEnsemble) = data(s[1])
+predictors(mach::SDMmachine) = mach.predictors
+predictors(s::SDMgroupOrEnsemble) = predictors(s[1])
 
 
 #Base.getproperty(ensemble::SDMensemble, key::Symbol) = getproperty.(ensemble, key)
@@ -44,7 +43,7 @@ machines(group::SDMgroup) = map(m -> m.machine, group)
 sdm_machines(group::SDMgroup) = group.sdm_machines
 
 # machine_key generates a unique key for a machine
-machine_keys(group::SDMgroup) = [Symbol("$(group.model_name)_$(group.resampler_name)_$(m.fold)") for m in group]
+machine_keys(group::SDMgroup) = [Symbol("$(group.model_name)_fold$(m.fold)") for m in group]
 
 # A bunch of functions are applied to an ensemble by applying to each group and reducing with vcat
 for f in (:machines, :machine_keys, :sdm_machines)
@@ -55,7 +54,7 @@ model_names(ensemble) = getfield.(ensemble.groups, :model_name)
 
 ## Select methods
 # Function to convienently select some models from groups or ensembles
-function select(group::SDMgroup, machine_indices::Vector{<:Int})
+function select(group::SDMgroup, machine_indices::AbstractVector{<:Integer})
     if length(machine_indices) == 0
         return nothing
     else 
@@ -64,12 +63,11 @@ function select(group::SDMgroup, machine_indices::Vector{<:Int})
             group.model,
             group.resampler,
             group.model_name,
-            group.resampler_name
         )
     end
 end
 
-function select(ensemble::SDMensemble, group_indices::Vector{<:Int})
+function select(ensemble::SDMensemble, group_indices::AbstractVector{<:Integer})
     if length(group_indices) == 0
         return nothing
     else 
@@ -79,7 +77,7 @@ function select(ensemble::SDMensemble, group_indices::Vector{<:Int})
     end
 end
 
-function select(ensemble::SDMensemble; machines::Vector{<:Int})
+function select(ensemble::SDMensemble; machines)
     if length(machines) == 0
         return nothing
     else 
@@ -113,7 +111,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
     println(io, "Predictors: $(join(["$key ($scitype)" for (key, scitype) in zip(nam, sci)], ", "))")
 
     m_names = model_names(ensemble)
-    resampler_names = getfield.(ensemble.groups, :resampler_name)
+    resampler_names = MLJBase.name.(getfield.(ensemble.groups, :resampler))
     n_models = Base.length.(ensemble.groups)
     table_cols = hcat(m_names, resampler_names, n_models)
     header = (["model", "resampler", "machines"])
@@ -123,7 +121,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", group::SDMgroup)
     println(io, "SDMgroup with $(Base.length(group)) machines")
-    println(io, "Model $(group.model_name) and resampler $(group.resampler_name)")
+    println(io, "Model $(group.model_name) and resampler $(MLJBase.name(group.resampler))")
 end
 
 
@@ -136,7 +134,7 @@ Tables.columns(ensemble::SDMensemble) = Tables.columns(ensemble.groups)
 # Turns models into a NamedTuple with unique keys
 function _givenames(models::Vector)
     names = map(models) do model
-        Base.replace(MLJBase.name(model), r"Classifier$"=>"", r"Binary$"=>"")
+        Base.replace(MLJBase.name(model), "Classifier"=>"", "Binary"=>"")
     end
     for (name, n) in StatsBase.countmap(names)
         if n > 1
@@ -147,7 +145,7 @@ function _givenames(models::Vector)
 end
 
 function _fit_sdm_model(predictor_values::NamedTuple, response_values, model, fold, train, test, verbosity)
-    mach = MLJBase.machine(model, predictor_values, response_values)
+    mach = MLJBase.machine(model, predictor_values, response_values, scitype_check_level= fold == 1)
     MLJBase.fit!(mach; rows = train, verbosity = verbosity)
     return SDMmachine(mach, keys(predictor_values), fold, train, test)
 end
@@ -159,7 +157,6 @@ function _fit_sdm_group(
     resampler, 
     folds,
     model_name, 
-    resampler_name,
     verbosity,
     cpu_backend
     )
@@ -168,51 +165,80 @@ function _fit_sdm_group(
         _fit_sdm_model(predictor_values, response_values, model, f, train, test, verbosity)
     end
 
-    return SDMgroup(machines, model, resampler, model_name, resampler_name)
+    return SDMgroup(machines, model, resampler, model_name)
 
 end
 
-function _fit_sdm_ensemble(
-    presences, 
-    absence, 
-    models, 
-    resamplers,
-    predictors::Vector{Symbol},
-    verbosity::Int,
-    cpu_backend
+function _sdm(
+    presences,
+    absences,
+    models,
+    resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
+    predictors = _get_predictor_names(presences, absences),
+    verbosity = 0,
+    threaded = false
 )
-    @assert Tables.istable(presences) && Tables.istable(absence)
+    X, y = _predictor_response_from_presence_absence(presences, absences, predictors)
+    # handle geometries separately. In the future, we might use geometries somehow, 
+    # e.g. to add spatial resampling, or define a scatter! recipe.
+    # Right now geometries are not stored/used
+    :geometry ∈ predictors && error("Predictors cannot be called :geometry")
+    #if :geometry ∈ Tables.columnnames(presences) && :geometry ∈ Tables.columnnames(absences)
+    #    geometries = [vcat(Tables.getcolumn(presences, :geometry), Tables.getcolumn(absences, :geometry))]
+    #else
+    #    geometries = nothing
+    #end
 
-    n_presence = Base.length(Tables.rows(presences)) ##
-    n_absence = Base.length(Tables.rows(absence))
-    n_total = n_presence + n_absence
+    _sdm(X, y, models, resampler, verbosity, threaded)
+end
 
-    # merge presence and absence data into one namedtuple of vectors
-    predictor_values = NamedTuple{Tuple(predictors)}([[Tables.columns(absence)[var]; Tables.columns(presences)[var]] for var in predictors])
-    response_values = boolean_categorical([falses(n_absence); trues(n_presence)])
+function _sdm(
+    X, 
+    y::CategoricalArrays.CategoricalArray{Bool},
+    models::Vector{<:MLJBase.Model}, 
+    resampler::MLJBase.ResamplingStrategy,
+    predictors,
+    verbosity::Int,
+    threaded::Bool
+)
+    train_test_rows = MLJBase.train_test_pairs(resampler, 1:length(y), y)
+    _fit_sdm_ensemble(X, y; models, resampler, train_test_rows, predictors, verbosity, threaded)
+end
 
-    models_ = _givenames(models)
-    resamplers_ = _givenames(resamplers)
-    
-    sdm_groups = mapreduce(vcat, collect(keys(resamplers_))) do resampler_key
-        resampler = resamplers_[resampler_key]
-        folds = MLJBase.train_test_pairs(resampler, 1:n_total, response_values) ## get indices
-        _map(cpu_backend)(collect(keys(models_))) do model_key
-            model = models_[model_key]
-            _fit_sdm_group(
-                predictor_values, 
-                response_values, 
-                model, 
-                resampler, 
-                folds,
-                model_key, 
-                resampler_key,
-                verbosity,
-                cpu_backend
-            )
-        end
+function _sdm(
+    X,
+    y::CategoricalArrays.CategoricalArray{Bool},
+    models::Vector{<:MLJBase.Model},
+    train_test_rows::Vector{<:Tuple{AbstractVector{<:Integer}, AbstractVector{<:Integer}}},
+    predictors,
+    verbosity::Int,
+    threaded::Bool
+)
+    _fit_sdm_ensemble(X, y; models, resampler = CustomRows(), train_test_rows, predictors, verbosity, threaded)
+end
+
+function _fit_sdm_ensemble(X, y; models, resampler, train_test_rows, predictors, verbosity, threaded)
+    cols = Tables.columns(X)
+    X_ = NamedTuple{Tuple(predictors)}([Tables.getcolumn(cols, pred) for pred in predictors])
+    _fit_sdm_ensemble(X_, y, models, resampler, train_test_rows, verbosity, threaded::Bool)
+end
+
+function _fit_sdm_ensemble(X, y, models, resampler, folds, verbosity, threaded::Bool)
+    models = _givenames(models)
+    backend = cpu_backend(threaded)
+    sdm_groups = _map(backend)(collect(keys(models))) do model_key
+        model = models[model_key]
+        _fit_sdm_group(
+            X, 
+            y, 
+            model, 
+            resampler, 
+            folds,
+            model_key, 
+            verbosity,
+            backend
+        )
     end
 
     return SDMensemble(sdm_groups)
-
 end

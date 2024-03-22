@@ -24,21 +24,20 @@ function sdm(
     verbosity = 0,
     threaded = false
 )
-
-    predictors = collect(predictors)
-
-    # Check the predictor values are valid
-    :geometry in [predictors] && error("Predictors cannot be called :geometry")
-    Base.intersect(predictors, Tables.schema(presences).names) == predictors || 
-        error("The presence data does not contain all predictors specified")
-    Base.intersect(predictors, Tables.schema(absences).names) == predictors || 
-        error("The absence data does not contain all predictors specified")
-
-    backend = cpu_backend(threaded)
-
-    _fit_sdm_ensemble(presences, absences, models, [resampler], predictors, verbosity, backend)
+    _sdm(presences, absences, models, resampler, predictors, verbosity, threaded)
 end
 
+function sdm(
+    X,
+    y::BitVector;
+    models,
+    resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
+    predictors = Base.filter(!=(:geometry), Tables.schema(X).names),
+    verbosity = 0,
+    threaded = false
+)
+    _sdm(X, boolean_categorical(y), models, resampler, predictors, verbosity, threaded)
+end
 """
     evaluate(x; measures, train = true, test = true, [validation])
 
@@ -64,20 +63,16 @@ function evaluate( # Define this as an extension of MLJBase.evaluate??
         StatisticalMeasures.log_loss, 
         StatisticalMeasures.kappa
     ),
-    test = true,
     train = true,
+    test = true,
     validation::Tuple = ()
 )
     test || train || isempty(validation) || error("No data to test. Either test or train must be true, or validation data must be provided")
     if !isempty(validation)
-        length(validation) == 2 || error("Validation data should be two elements, with the first one presence and the second one background/absence points")
-        v_p = Tables.rowtable(validation[1]); v_bg = Tables.rowtable(validation[2])
-        validation_X = [v_p; v_bg]
-        validation_y = boolean_categorical([trues(length(v_p)); falses(length(v_bg))])
-        validation = (validation_X, validation_y)
+        validation = _predictor_response_from_presence_absence(validation[1],validation[2], predictors(x))
     end
 
-    _evaluate(x, measures, test, train, validation)
+    _evaluate(x, measures, train, test, validation)
 end
 
 

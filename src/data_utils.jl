@@ -13,6 +13,20 @@ function _get_predictor_names(p, a)
     return predictors
 end
 
+
+function _predictor_response_from_presence_absence(presences, absences, predictors)
+    p_columns = Tables.columns(presences)
+    a_columns = Tables.columns(absences) 
+    n_presence = Tables.rowcount(p_columns)
+    n_absence = Tables.rowcount(a_columns)
+
+    # merge presence and absence data into one namedtuple of vectors
+    predictor_values = NamedTuple{Tuple(predictors)}([[a_columns[var]; p_columns[var]] for var in predictors])
+    response_values = boolean_categorical([falses(n_absence); trues(n_presence)])
+    return predictor_values, response_values
+end
+
+
 cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
 _map(::CPU1) = Base.map
 _map(::CPUThreads) = ThreadsX.map
