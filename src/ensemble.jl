@@ -144,9 +144,10 @@ function _givenames(models::Vector)
     return NamedTuple{Tuple(Symbol.(names))}(models)
 end
 
-function _fit_sdm_model(predictor_values::NamedTuple, response_values, model, fold, train, test, verbosity)
-    mach = MLJBase.machine(model, predictor_values, response_values, scitype_check_level= fold == 1)
-    MLJBase.fit!(mach; rows = train, verbosity = verbosity)
+function _fit_sdm_model(predictor_values::NamedTuple, response_values, model, fold, train, test, verbosity, cache, scitype_check_level)
+    scitype_check_level = scitype_check_level * fold == 1
+    mach = MLJBase.machine(model, predictor_values, response_values; cache, scitype_check_level)
+    MLJBase.fit!(mach; rows = train, verbosity)
     return SDMmachine(mach, keys(predictor_values), fold, train, test)
 end
 
@@ -158,11 +159,13 @@ function _fit_sdm_group(
     folds,
     model_name, 
     verbosity,
+    cache,
+    scitype_check_level,
     cpu_backend
     )
 
     machines = _map(cpu_backend)(enumerate(folds)) do (f, (train, test))
-        _fit_sdm_model(predictor_values, response_values, model, f, train, test, verbosity)
+        _fit_sdm_model(predictor_values, response_values, model, f, train, test, verbosity, cache, scitype_check_level)
     end
 
     return SDMgroup(machines, model, resampler, model_name)
@@ -173,10 +176,12 @@ function _sdm(
     presences,
     absences,
     models,
-    resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
-    predictors = _get_predictor_names(presences, absences),
-    verbosity = 0,
-    threaded = false
+    resampler,
+    predictors,
+    verbosity,
+    cache, 
+    scitype_check_level,
+    threaded
 )
     X, y = _predictor_response_from_presence_absence(presences, absences, predictors)
     # handle geometries separately. In the future, we might use geometries somehow, 
@@ -189,7 +194,7 @@ function _sdm(
     #    geometries = nothing
     #end
 
-    _sdm(X, y, models, resampler, verbosity, threaded)
+    _sdm(X, y, models, resampler, predictors, verbosity, cache, scitype_check_level, threaded)
 end
 
 function _sdm(
@@ -199,10 +204,12 @@ function _sdm(
     resampler::MLJBase.ResamplingStrategy,
     predictors,
     verbosity::Int,
+    cache, 
+    scitype_check_level,
     threaded::Bool
 )
     train_test_rows = MLJBase.train_test_pairs(resampler, 1:length(y), y)
-    _fit_sdm_ensemble(X, y; models, resampler, train_test_rows, predictors, verbosity, threaded)
+    _fit_sdm_ensemble(X, y; models, resampler, train_test_rows, predictors, verbosity, cache, scitype_check_level, threaded)
 end
 
 function _sdm(
@@ -212,18 +219,20 @@ function _sdm(
     train_test_rows::Vector{<:Tuple{AbstractVector{<:Integer}, AbstractVector{<:Integer}}},
     predictors,
     verbosity::Int,
+    cache,
+    scitype_check_level,
     threaded::Bool
 )
-    _fit_sdm_ensemble(X, y; models, resampler = CustomRows(), train_test_rows, predictors, verbosity, threaded)
+    _fit_sdm_ensemble(X, y; models, resampler = CustomRows(), train_test_rows, predictors, verbosity, cache, scitype_check_level, threaded)
 end
 
-function _fit_sdm_ensemble(X, y; models, resampler, train_test_rows, predictors, verbosity, threaded)
+function _fit_sdm_ensemble(X, y; models, resampler, train_test_rows, predictors, verbosity, cache, scitype_check_level, threaded)
     cols = Tables.columns(X)
     X_ = NamedTuple{Tuple(predictors)}([Tables.getcolumn(cols, pred) for pred in predictors])
-    _fit_sdm_ensemble(X_, y, models, resampler, train_test_rows, verbosity, threaded::Bool)
+    _fit_sdm_ensemble(X_, y, models, resampler, train_test_rows, verbosity, cache, scitype_check_level, threaded::Bool)
 end
 
-function _fit_sdm_ensemble(X, y, models, resampler, folds, verbosity, threaded::Bool)
+function _fit_sdm_ensemble(X, y, models, resampler, folds, verbosity, cache, scitype_check_level, threaded::Bool)
     models = _givenames(models)
     backend = cpu_backend(threaded)
     sdm_groups = _map(backend)(collect(keys(models))) do model_key
@@ -236,6 +245,8 @@ function _fit_sdm_ensemble(X, y, models, resampler, folds, verbosity, threaded::
             folds,
             model_key, 
             verbosity,
+            cache,
+            scitype_check_level,
             backend
         )
     end

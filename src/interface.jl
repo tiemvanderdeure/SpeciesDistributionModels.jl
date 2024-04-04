@@ -11,6 +11,8 @@ For a full list of supported models, see https://alan-turing-institute.github.io
 `resampler`: The resampling strategy to be used of type `MLJBase.ResamplingStrategy`. Defaults to 5-fold cross validation.
 `predictors`: a `Vector` of `Symbols` with the names of the predictor values to be used. By default, all pdf
 `verbosity`: an `Int` value that regulates how much information is printed.
+`cache`: is passed to `MLJBase.machine`. Specify cache=false to prioritize memory management over speed.
+`scitype_check_level`: is passed to `MLJBase.machine`. Specify scitype_check_level=0 to disable scitype checking.
 
 ## Example
 
@@ -22,9 +24,11 @@ function sdm(
     resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
     predictors = _get_predictor_names(presences, absences),
     verbosity = 0,
+    cache = true,
+    scitype_check_level = 1,
     threaded = false
 )
-    _sdm(presences, absences, models, resampler, predictors, verbosity, threaded)
+    _sdm(presences, absences, models, resampler, predictors, verbosity, cache, scitype_check_level, threaded)
 end
 
 function sdm(
@@ -34,9 +38,11 @@ function sdm(
     resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
     predictors = Base.filter(!=(:geometry), Tables.schema(X).names),
     verbosity = 0,
+    cache = true,
+    scitype_check_level = 1,
     threaded = false
 )
-    _sdm(X, boolean_categorical(y), models, resampler, predictors, verbosity, threaded)
+    _sdm(X, boolean_categorical(y), models, resampler, predictors, verbosity, cache, scitype_check_level, threaded)
 end
 """
     evaluate(x; measures, train = true, test = true, [validation])
