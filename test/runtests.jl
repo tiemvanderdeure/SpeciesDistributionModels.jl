@@ -4,18 +4,33 @@ using StableRNGs, Distributions, Test
 using Makie
 
 rng = StableRNG(0)
+using Random; rng = Random.GLOBAL_RNG
 # some mock data
 n = 100
 backgrounddata = (a = rand(rng, n), b = rand(rng, n), c = rand(rng, n))
 presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
 @testset "SpeciesDistributionModels.jl" begin
-    models = [SDM.random_forest(; rng), SDM.random_forest(; max_depth = 3, rng), SDM.linear_model(), SDM.boosted_regression_tree()]
+    models = [
+        SDM.random_forest(; rng)
+        SDM.random_forest(; max_depth = 3, rng)
+        SDM.linear_model()
+        SDM.boosted_regression_tree(; rng)
+    ]
 
     ensemble = sdm(
         presencedata, backgrounddata;
-        models = models, resampler = SDM.MLJBase.CV(; shuffle = true, nfolds = 5, rng), threaded = false
+        models = models, 
+        resampler = SDM.MLJBase.CV(; shuffle = true, nfolds = 5, rng), 
+        threaded = false
     )
+    # alternative sdm method
+    x = map(presencedata, backgrounddata) do p, b
+        [p; b]
+    end
+    y = [trues(Tables.rowcount(presencedata)); falses(Tables.rowcount(backgrounddata))]
+    ensemble2 = sdm(x, y; models, resampler = SDM.NoResampling())
+    
     evaluation = SDM.evaluate(ensemble; validation = (presencedata, backgrounddata))
     evaluation2 = SDM.evaluate(ensemble)
     @test evaluation isa SDM.SDMensembleEvaluation
