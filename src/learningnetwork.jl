@@ -1,161 +1,197 @@
-using MLJBase
+import MLJBase, MLJModels, Tables, Rasters
+import MLJModelInterface as MMI
+import MLJBase: Node, node, source, Machine, machine
 
-import EvoTrees: EvoTreeClassifier
-import MLJModelInterface
-MMI = MLJModelInterface
-import Tables
+### SdmPreProcessor
+# Similar to FeatureSelector(),  but also handles RasterStacks, and always ignores :geometry features
+mutable struct SdmPreProcessor <: MLJBase.Unsupervised
+    features::Vector{Symbol}
+    clamp::Bool
+end
+function MMI.fit(transformer::SdmPreProcessor, verbosity::Int, X)
+    all_features = Tables.schema(X).names
 
-mutable struct Reducer <: MMI.Probabilistic
+    if isempty(transformer.features)
+        features = collect(all_features)
+        filter!(feature -> feature != :geometry, features)
+    else
+        for feature in transformer.features
+            feature in all_features ||
+            throw(ArgumentError("Feature $feature is expliclitly selected, but not found in the training data"))
+        end
+        in(:geometry, transformer.features) &&
+        throw(ArgumentError("Features cannot be called :geometry"))
+        features = transformer.features |> collect
+    end
+
+    cols = Tables.columns(X)
+    extrema = NamedTuple(feature => Base.extrema(Tables.getcolumn(cols, feature)) for feature in features)
+
+    report = NamedTuple()
+
+    return (features, extrema), nothing, report
+end
+function MMI.transform(p::SdmPreProcessor, (features, extrema), X)
+    all(e -> e in Tables.schema(X).names, features) ||
+    throw(ArgumentError("Supplied frame does not admit previously selected features."))
+
+    if X isa Rasters.RasterStack
+        rs = X[Tuple(features)]
+        if p.clamp 
+            rs = map(rs, extrema) do r, ex
+                clamp.(r, ex...)
+            end
+        end
+        return view(rs, Rasters.boolmask(rs))
+    else
+        cols = MMI.selectcols(X, features)
+        if p.clamp 
+            cols = map(cols, extrema) do c, ex
+                clamp.(c, ex...)
+            end
+        end
+        return cols
+    end
+end
+MMI.clean!(transformer::SdmPreProcessor) = ""
+
+### SdmPostProcessor
+# Reduces and constructs a Raster
+mutable struct SdmPostProcessor <: MLJBase.Unsupervised
     reducing_function::Function    
 end
-
-function MMI.fit(m::Reducer, verbosity::Int64, X, y) 
-    (MMI.classes(y), nothing , nothing)
-end
-function MMI.predict(m::Reducer, classes, X)
-    mat = MMI.matrix(X)
-    y = map(row -> m.reducing_function(row), eachrow(mat))
-    MMI.UnivariateFinite(classes, y, augment = true)
+function MMI.fit(transformer::SdmPostProcessor, verbosity::Int)
+    report = NamedTuple()
+    fitresult = nothing
+    return fitresult, nothing, report
 end
 
-# Similar to FeatureSelector(), but also handles RasterStacks
-mutable struct SdmDataProcessor
-    features::Vector{Symbol}
+function MMI.transform(transformer::SdmPostProcessor, _, X, indata)
+    X_true = map(x -> x.prob_given_ref[2], X)
+    if indata isa Base.SubArray #this is the case if the provided data is a RasterStack
+        dims = Rasters.dims(indata.parent.parent) # indata.parent.parent is the original RasterStack
+        y = Base.fill!(Raster{Union{Missing, Float64}}(undef, dims), missing)
+        y_view = Base.view(y, Base.parentindices(indata)...)
+        map!((cols...) -> Float64(transformer.reducing_function(cols)), y_view, X_true...)
+    else
+        y = map((cols...) -> transformer.reducing_function(cols), X_true...)
+       # y = MLJBase.UnivariateFinite(categorical([false, true]), y, augment = true)
+    end
+    return y
 end
 
-SdmDataProcessor() = SdmDataProcessor([])
+MMI.clean!(transformer::SdmPostProcessor) = ""
 
+### SdmModel - just a single model with a preprocessor and postprocessor
+mutable struct SdmModel{
+    modelname
+} <: MLJBase.ProbabilisticNetworkComposite
+    model::MLJBase.Supervised
+    preprocessor::SdmPreProcessor
+    postprocessor::SdmPostProcessor
+end
+
+
+### Ensemble
 mutable struct SdmEnsemble{
     modelnames,
-} <: ProbabilisticNetworkComposite
-    models::Vector{Supervised}
-    reducer::Probabilistic
+} <: MLJBase.ProbabilisticNetworkComposite
+    models::Vector{MLJBase.Supervised}
+    preprocessor::SdmPreProcessor
+    postprocessor::SdmPostProcessor
+    standardize::Bool
     cache::Bool
     acceleration::MLJBase.AbstractResource
-    function SdmEnsemble(
-        modelnames,
-        models,
-        reducer,
-        cache = false,
-        acceleration = CPU1()
-    )
-        map(models) do m
-            MLJBase.check_ismodel(m, spelling=true)
-        end
-        return new{modelnames}(
-            models,
-            Reducer(reducer),
-            cache,
-            acceleration
-        )
-    end
- end
+end
 
-function SdmEnsemble(; reducer = mean, cache = false, acceleration = CPU1(), named_models...)
+## Constructors
+ function SdmEnsemble(; features = Symbol[], reducing_function = mean, standardize = true, cache = false, acceleration = CPU1(), named_models...)
     nt = NamedTuple(named_models)
     modelnames = keys(nt)
     models = collect(nt)
-    SdmEnsemble(modelnames, models, reducer, cache, acceleration)
+    map(models) do m
+        MLJBase.check_ismodel(m, spelling=true)
+    end
+    return SdmEnsemble{modelnames}(
+        models,
+        SdmPreProcessor(features, true),
+        SdmPostProcessor(reducing_function),
+        standardize,
+        cache,
+        acceleration
+    )
 end
 
 Base.propertynames(::SdmEnsemble{modelnames}) where modelnames =
- tuple(:reducer, :cache, :acceleration, modelnames...)
+ tuple(:reducing_function, :features, :cache, :acceleration, :preprocessor, :postprocessor, modelnames...)
 
 function Base.getproperty(stack::SdmEnsemble{modelnames}, name::Symbol) where modelnames
-    for f = [:reducer, :cache, :acceleration]
-        name === f && return getfield(stack, f)
-    end
-    models = getfield(stack, :models)
-    for j in eachindex(modelnames)
-        name === modelnames[j] && return models[j]
-    end
-    error("type Stack has no property $name")
-end
-
-function Base.setproperty!(stack::SdmEnsemble, f::Symbol, v::Function)
-    if f === :reducer 
-        return setfield!(stack, f, Reducer(v))
+    if name in modelnames
+        models = getfield(stack, :models)
+        for j in eachindex(modelnames)
+            name === modelnames[j] && return models[j]
+        end
+    elseif name === :features
+        return getfield(getfield(stack, :preprocessor), name)
+    elseif name === :reducing_function
+        return getfield(getfield(stack, :postprocessor), name)
     else
-        ty = fieldtype(typeof(x), f)
-        val = v isa ty ? v : convert(ty, v)
-        return setfield!(x, f, val)
+        return getfield(stack, name)
     end
 end
 
-function setproperty!(x, f::Symbol, v)
-    ty = fieldtype(typeof(x), f)
-    val = v isa ty ? v : convert(ty, v)
-    return setfield!(x, f, val)
+function Base.setproperty!(stack::SdmEnsemble, f::Symbol, v)
+    if f === :features
+        return setfield!(stack.preprocessor, f, v)
+    elseif f === :reducing_function
+        return setfield!(stack.postprocessor, f, v)
+    else
+        ty = fieldtype(typeof(stack), f)
+        val = v isa ty ? v : convert(ty, v)
+        return setfield!(stack, f, val)
+    end
 end
 
-pdf_true_transform(ŷ::Node) = node(ŷ -> pdf.(ŷ, true), ŷ)
 # Creating a namedtuple node!
-Base.NamedTuple{names}(args::AbstractNode...) where names = node((args...) -> NamedTuple{names}(args), args...)
-Base.eachrow(X::AbstractNode) = node(Base.eachrow, X)
-
-
+#Base.NamedTuple{names}(args::NTuple{<:Any, Node}) where names = node((args...) -> NamedTuple{names}(args), args...)
+nodenamedtuple(keys, values::NTuple{<:Any, Node}) = node((values...) -> NamedTuple{keys}(values), values...)
 function MLJBase.prefit(ensemble::SdmEnsemble{modelnames}, verbosity::Int, X, y) where modelnames
     Xs = source(X)
     ys = source(y)
 
-    reducer = machine(:reducer, Xs, ys, cache = ensemble.cache)
+    preprocessor = machine(:preprocessor, Xs, cache = ensemble.cache)
+    postprocessor = machine(:postprocessor, cache = ensemble.cache)
+
+    t = MLJBase.transform(preprocessor, Xs)
+
+    if ensemble.standardize
+        standardizer = machine(MLJModels.Standardizer(), t, cache = ensemble.cache)
+        tnew = MLJBase.transform(standardizer, t)
+    else
+        tnew = t
+    end
 
     Zpred = map(modelnames) do symbolic_model
-        model = getproperty(ensemble, symbolic_model)
-        mach = machine(symbolic_model, Xs, ys, cache=ensemble.cache)
-        ypred = predict(mach, Xs)
-        ypred_float = pdf_true_transform(ypred)#, typeof(model), target_scitype(model))
+        mach = machine(symbolic_model, tnew, ys, cache=ensemble.cache)
+        MLJBase.predict(mach, tnew)
     end 
-    Ztable = MLJBase.table(hcat(Zpred...))
-    me = predict(reducer, Ztable)
 
+    Ztable = nodenamedtuple(modelnames, Zpred)#MLJBase.table(hcat(Zpred...))
+    y = MLJBase.transform(postprocessor, Ztable, t)
 
-    #Zpred = NamedTuple{modelnames}(Zpred...)
-    rows = eachrow(Ztable)
+    return merge(
+        NamedTuple{modelnames}(Zpred),
 
-    (;
-     predict = me,
-     acceleration=ensemble.acceleration,
-     )
+        (        Ztable = Ztable, predict = y, acceleration=ensemble.acceleration, preprocessor, postprocessor),
+    )
 end
 
-ensemble = SdmEnsemble(reducer = mean, tree = EvoTreeClassifier(), tree2 = EvoTreeClassifier())
-X = (a = rand(10), b = rand(10))
-y = categorical(rand(Bool, 10))
-m = machine(ensemble, X, y)
-fit!(m)
-t = predict(m, X)
-
-
-UnivariateFinite(t, MMI.classes(y), augment = true)
-
-ensemble.reducer =  median# Reducer(median)
-
-predict_joint
-NamedTuple{modelnames}(t)
-
-n = MLJBase.prefit(ensemble, 0, X, y).predict.args[1].args[1].args[1]
-
-MLJBase.glb |> methods
-myhcat(args::AbstractNode...) = node(hcat, args...)
-
-
-NamedTuple{names}(itr) where {names} = NamedTuple{names}(Tuple(itr))
-
-
-NamedTuple{modelnames}(Zprednode...)
-
-nodecollect(Zprednode...)
-nodecollect(X::AbstractNode...) = node(collect, X...)
-
-
-
-@edit MLJBase.glb(MLJBase.prefit(ensemble, 0, X, y).predict)
-
-Zprednode = (MLJBase.prefit(ensemble, 0, X, y).predict)
-modelnames = (:tree,)
-node(Zprednode -> NamedTuple{modelnames}(Zprednode), Zprednode)
-
-namedtuplenode2((:tree,), (Zprednode,)...)
-
-getmodels(ensemble)
+## Hack the evaluate method like with a pipeline?
+function MLJBase.evaluate!(m::Machine{<:SdmEnsemble}; kw...)
+    pipe = MLJBase.Pipeline(
+        m.model, 
+        (y -> MLJBase.UnivariateFinite(MLJBase.categorical([false, true]), y, augment = true)), 
+        prediction_type = :probabilistic)
+    mach_ev = machine(pipe, m.args...)
+    MLJBase.evaluate!(mach_ev; kw...)
+end
