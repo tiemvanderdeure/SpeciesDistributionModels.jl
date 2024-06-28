@@ -21,7 +21,7 @@ function sdm(
     presences,
     absences;
     models,
-    resampler = MLJBase.CV(; nfolds = 5, shuffle = true),
+    resampler = NoResampling(),#MLJBase.CV(; nfolds = 5, shuffle = true),
     predictors = _get_predictor_names(presences, absences),
     verbosity = 0,
     cache = true,

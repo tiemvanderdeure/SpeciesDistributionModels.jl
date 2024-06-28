@@ -1,4 +1,4 @@
-using SpeciesDistributionModels, MLJBase
+using SpeciesDistributionModels, MLJBase, Tables
 import SpeciesDistributionModels as SDM
 using StableRNGs, Distributions, Test
 using Makie
@@ -84,3 +84,22 @@ end
     @test remove_collinear(data_with_perfect_collinearity; method = SDM.Gvif(; threshold = 2.), silent = true) == (:a, )
     @test remove_collinear(data_with_perfect_collinearity; method = SDM.Pearson(; threshold = 0.65), silent = true) == (:a, )
 end
+
+using SpeciesDistributionModels, MLJBase, Tables
+import SpeciesDistributionModels as SDM
+
+import EvoTrees: EvoTreeClassifier
+    using Statistics
+    using Rasters: RasterStack, Raster
+    xdim = Rasters.X(1:10); ydim = Rasters.Y(1:10)
+    rs = RasterStack([Raster(rand(xdim,ydim)) for i in 1:2]...; name = [:a, :b])
+
+    X = (a = rand(100), b = rand(Float32, 100) .+ 2)
+    y = MLJBase.categorical(rand(Bool, 100))
+    ensemble = SDM.SdmEnsemble(tree = EvoTreeClassifier(), tree2 = EvoTreeClassifier(); reducing_function = mean, cache =true)
+
+    mach = machine(ensemble, X, y)
+    MLJBase.fit!(sp; force = true)
+    MLJBase.predict(sp, rs)
+
+    ev = MLJBase.evaluate!(sp, measure = auc)

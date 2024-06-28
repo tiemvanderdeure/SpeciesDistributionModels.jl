@@ -77,23 +77,23 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMmachineEvaluation)
     println(io, "SDMmachineEvaluation")
 
-    measures = collect(keys(measures(evaluation)))
+    measure_names = collect(keys(measures(evaluation)))
     sets = evaluation_sets(evaluation)
     scores = map(sets) do s
         round.(getfield.(collect(evaluation.results[s]), :score); digits = 2)
     end
     
-    table_cols = hcat(measures, scores...)
+    table_cols = hcat(measure_names, scores...)
     header = (["measure"; string.(sets)...])
     PrettyTables.pretty_table(io, table_cols; header = header)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMgroupEvaluation)
-    measures = collect(keys(measures(evaluation)))
+    measure_names = collect(keys(measures(evaluation)))
     train_scores, test_scores = machine_evaluations(evaluation)
     folds = getfield.(evaluation.group, :fold)
 
-    println(io, "$(typeof(evaluation)) with $(length(measures)) performance measures")
+    println(io, "$(typeof(evaluation)) with $(length(measure_names)) performance measures")
 
     println(io, "Testing data")
     PrettyTables.pretty_table(io, merge((; fold = folds),  test_scores))

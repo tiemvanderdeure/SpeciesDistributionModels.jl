@@ -21,7 +21,7 @@ end
 # Machine-level _predict method. All other _predict methods eventually call this
 function _predict(m::SDMmachine, data)
     # predict
-    prediction = MLJBase.predict(m.machine.old_model, m.machine.fitresult, data)
+    prediction = MLJBase.predict(m.machine, data)
     # convert to Floats
     return MLJBase.pdf.(prediction, true)
 end
@@ -75,12 +75,19 @@ _reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, clamp::Bo
     _reformat_and_predict_raster(e, rs, clamp, reducer, by_group, resource)
 _reformat_and_predict(g::SDMgroup, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Union{<:Function, <:Nothing}, resource::AbstractCPU) = 
     _reformat_and_predict_raster(g, rs, clamp, reducer, resource)
-_reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Bool, resource::AbstractCPU) =
-    _reformat_and_predict_raster(m, rs, clamp, resource)
+_reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Bool) =
+    _reformat_and_predict_raster(m, rs, clamp)
 
 function _reformat_and_predict_raster(s::Union{<:SDMensemble, SDMgroup, SDMmachine}, rs::Rasters.AbstractRasterStack, args...)
-    missing_mask = Rasters.boolmask(rs)
-    d = rs[missing_mask]
+    rs_preds = rs[predictors(s)]
+    missing_mask = Rasters.boolmask(rs_preds)
+    d = rs_preds[missing_mask]
+    if any(map(x -> Missing <: eltype(x), rs_preds))
+        # to get rid of Union{Missing, Float64} etc.
+        layertypes = map(x -> Base.nonmissingtype(eltype(x)), (Rasters.layers(rs_preds)))
+        nttype = NamedTuple{keys(layertypes), Tuple{values(layertypes)...}}
+        d = nttype.(d)
+    end
     pr =  _reformat_and_predict(s, d, args...)
     return _build_raster(missing_mask, pr)
 end
