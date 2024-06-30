@@ -4,33 +4,34 @@ using StableRNGs, Distributions, Test
 using Makie
 
 rng = StableRNG(0)
-using Random; rng = Random.GLOBAL_RNG
+#using Random; rng = Random.GLOBAL_RNG
 # some mock data
 n = 100
 backgrounddata = (a = rand(rng, n), b = rand(rng, n), c = rand(rng, n))
 presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
 @testset "SpeciesDistributionModels.jl" begin
-    models = [
-        SDM.random_forest(; rng)
-        SDM.random_forest(; max_depth = 3, rng)
-        SDM.linear_model()
-        SDM.boosted_regression_tree(; rng)
-    ]
-
-    ensemble = sdm(
-        presencedata, backgrounddata;
-        models = models, 
-        resampler = SDM.MLJBase.CV(; shuffle = true, nfolds = 5, rng), 
-        threaded = false
-    )
+    ## data
+    data = sdmdata(presencedata, backgrounddata; resampler = CV(nfolds = 5, shuffle = true))
     # alternative sdm method
     x = map(presencedata, backgrounddata) do p, b
         [p; b]
     end
     y = [trues(Tables.rowcount(presencedata)); falses(Tables.rowcount(backgrounddata))]
-    ensemble2 = sdm(x, y; models, resampler = SDM.NoResampling())
-    
+    data2 = sdmdata(x, y)
+
+    ## ensemble
+    models = (
+        rf = SDM.random_forest(; rng),
+        rf2 = OneHotEncoder() |> SDM.random_forest(; max_depth = 3, rng),
+        lm = SDM.linear_model(),
+        brt = SDM.boosted_regression_tree(; rng)
+    )
+
+    ensemble = sdm(data, models;
+        threaded = false
+    )
+
     evaluation = SDM.evaluate(ensemble; validation = (presencedata, backgrounddata))
     evaluation2 = SDM.evaluate(ensemble)
     @test evaluation isa SDM.SDMensembleEvaluation
@@ -53,7 +54,7 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
     eltype(pr3) == Vector{Int64}
 
     @test_throws ArgumentError SDM.predict(ensemble, backgrounddata.a)
-    @test_throws Exception SDM.predict(ensemble, backgrounddata[(:a,)])
+    @test_throws ArgumentError SDM.predict(ensemble, backgrounddata[(:a,)])
     @test_throws Exception SDM.predict(ensemble, backgrounddata; by_group = true)
 
     # explain
