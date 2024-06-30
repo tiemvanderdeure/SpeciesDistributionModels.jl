@@ -1,4 +1,17 @@
 """
+    sdmdata(presences, absences; resampler, predictors)
+"""
+
+function sdmdata(
+    presences,
+    absences;
+    resampler = NoResampling(),#MLJBase.CV(; nfolds = 5, shuffle = true),
+    predictors = nothing,
+)
+    _sdmdata(presences, absences, resampler, predictors)
+end
+
+"""
     sdm(presences, absences; models, [resampler], [predictors], [verbosity])
 
 Construct an ensemble with input data specified in `presences` and `absences`.
@@ -18,17 +31,13 @@ For a full list of supported models, see https://alan-turing-institute.github.io
 
 """
 function sdm(
-    presences,
-    absences;
-    models,
-    resampler = NoResampling(),#MLJBase.CV(; nfolds = 5, shuffle = true),
-    predictors = _get_predictor_names(presences, absences),
+    data, models;
     verbosity = 0,
     cache = true,
     scitype_check_level = 1,
     threaded = false
 )
-    _sdm(presences, absences, models, resampler, predictors, verbosity, cache, scitype_check_level, threaded)
+    _sdm(data, models, verbosity, cache, scitype_check_level, threaded)
 end
 
 function sdm(
@@ -75,7 +84,8 @@ function evaluate( # Define this as an extension of MLJBase.evaluate??
 )
     test || train || isempty(validation) || error("No data to test. Either test or train must be true, or validation data must be provided")
     if !isempty(validation)
-        validation = _predictor_response_from_presence_absence(validation[1],validation[2], predictors(x))
+        X, y = _predictor_response_from_presence_absence(validation[1],validation[2], predictorkeys(data(x)))
+        validation = (X, boolean_categorical(y))
     end
 
     _evaluate(x, measures, train, test, validation)
@@ -98,7 +108,7 @@ function explain(e::SDMensemble; method, data = data(e).predictor, predictors = 
 end
 
 """
-    predict(SDMobject, newdata; clamp = false, threaded = true, [reducer], [by_group])
+    predict(SDMobject, newdata; clamp = false, threaded = false, [reducer], [by_group])
 
 Use an `SDMmachine`, `SDMgroup`, or `SDMensemble` to predict habitat suitability for some data, optionally summarized for the entire ensemble, or for each `SDMgroup`.
 
@@ -115,13 +125,16 @@ If `newdata` is a `RasterStack`, the `predict` returns a `Raster`; otherwise, it
 habitat suitability represented by a floating-point number between 0 and 1.
 """
 function predict(m::SDMmachine, d; clamp = false)
+    _check_data(m, d)
     _reformat_and_predict(m, d, clamp)
 end
-function predict(g::SDMgroup, d; clamp = false, threaded = true, reducer = nothing)
+function predict(g::SDMgroup, d; clamp = false, threaded = false, reducer = nothing)
+    _check_data(g, d)
     _reformat_and_predict(g, d, clamp, reducer, cpu_backend(threaded))
 end
-function predict(e::SDMensemble, d; clamp = false, reducer = nothing, by_group = false, threaded = true)
-    by_group && isnothing(reducer) && error("If by_group is true, reducer must be specified")
+function predict(e::SDMensemble, d; clamp = false, reducer = nothing, by_group = false, threaded = false)
+    _check_data(e, d)
+    by_group && isnothing(reducer) && error("`by_group` is `true`, but no `reducer` is specified")
     _reformat_and_predict(e, d, clamp, reducer, by_group, cpu_backend(threaded))
 end
 

@@ -1,8 +1,16 @@
-#### Helper functions ####
+function _check_data(x, d)
+    @show Tables.istable(d)
+    Tables.istable(d) || throw(ArgumentError("data is a $(typeof(d)), wich is not a Tables.jl-compatible table"))
+    colnames = Tables.columnnames(Tables.columns(d))
+    for key in predictorkeys(data(x))
+        key in colnames || throw(ArgumentError("data is missing predictor variable $key"))
+    end
+
+end
 
 # Reformat data so that it can be used in predict. Different models use different data types
 function _reformat_data(m::SDMmachine, d, clamp::Bool)
-    traindata = data(m).predictor
+    traindata = predictor(data(m))
     newdata = Tables.columntable(d)[keys(traindata)]
     if clamp
         for k in keys(traindata)
@@ -12,7 +20,7 @@ function _reformat_data(m::SDMmachine, d, clamp::Bool)
         end
     end
 
-    return MLJBase.reformat(m.machine.old_model, newdata)[1]
+    return MLJBase.reformat(MLJBase.last_model(m.machine), newdata)[1]
 end
 #### _predict methods ####
 # _predict uses already-reformatted data.
@@ -21,7 +29,9 @@ end
 # Machine-level _predict method. All other _predict methods eventually call this
 function _predict(m::SDMmachine, data)
     # predict
-    prediction = MLJBase.predict(m.machine, data)
+    mach = m.machine
+    prediction = MLJBase.predict(MLJBase.last_model(mach), mach.fitresult, data)
+    prediction = MLJBase.get!(prediction, :predict, mach)
     # convert to Floats
     return MLJBase.pdf.(prediction, true)
 end
