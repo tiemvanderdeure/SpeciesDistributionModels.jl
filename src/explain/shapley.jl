@@ -11,7 +11,7 @@ struct ShapleyValues <: SDMexplainMethod
     algorithm::Shapley.Algorithm
 end
 # Default to MonteCarlo algorithm with 100 samples
-function ShapleyValues(N::Integer; threaded = true, rng = Random.GLOBAL_RNG)
+function ShapleyValues(N::Integer; threaded = false, rng = Random.GLOBAL_RNG)
     resource = threaded ? CPUThreads() : CPU1()
     algorithm = Shapley.MonteCarlo(resource, N, rng)
     ShapleyValues(algorithm)
