@@ -1,9 +1,16 @@
 function _check_data(x, d)
-    @show Tables.istable(d)
     Tables.istable(d) || throw(ArgumentError("data is a $(typeof(d)), wich is not a Tables.jl-compatible table"))
     colnames = Tables.columnnames(Tables.columns(d))
     for key in predictorkeys(data(x))
         key in colnames || throw(ArgumentError("data is missing predictor variable $key"))
+    end
+
+end
+
+function _check_data(x, rs::Rasters.AbstractRasterStack)
+    layernames = Rasters.name(rs)
+    for key in predictorkeys(data(x))
+        key in layernames || throw(ArgumentError("data is missing predictor variable $key"))
     end
 
 end
@@ -89,7 +96,7 @@ _reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Boo
     _reformat_and_predict_raster(m, rs, clamp)
 
 function _reformat_and_predict_raster(s::Union{<:SDMensemble, SDMgroup, SDMmachine}, rs::Rasters.AbstractRasterStack, args...)
-    rs_preds = rs[predictors(s)]
+    rs_preds = rs[predictorkeys(data(s))]
     missing_mask = Rasters.boolmask(rs_preds)
     d = rs_preds[missing_mask]
     if any(map(x -> Missing <: eltype(x), rs_preds))
