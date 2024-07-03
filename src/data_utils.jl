@@ -89,8 +89,10 @@ end
 function _sdmdata(
     X::Tables.ColumnTable, 
     y::BooleanCategorical, 
-    resampler::MLJBase.TrainTestPairs, 
+    traintestpairs::MLJBase.TrainTestPairs, 
 )
+    geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
+    X = Base.structdiff(X, NamedTuple{(:geometry,)})
     SDMdata(X, y, geometries, traintestpairs, nothing)
 end
 
