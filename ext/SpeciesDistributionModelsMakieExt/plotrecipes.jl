@@ -1,6 +1,6 @@
 function _model_controls!(fig, ensemble)
     toggles = [Makie.Toggle(fig, active = true) for i in 1:Base.length(ensemble)]
-    labels = [Makie.Label(fig, String(key)) for key in SDM.model_names(ensemble)]
+    labels = [Makie.Label(fig, String(key)) for key in SDM.model_keys(ensemble)]
     g = Makie.grid!(hcat(toggles, labels))
     return g, toggles
 end

@@ -59,7 +59,7 @@ for f in (:machines, :machine_keys, :sdm_machines)
     @eval ($f)(ensemble::SDMensemble) = mapreduce(group -> ($f)(group), vcat, ensemble)
 end
 
-model_names(ensemble) = getfield.(ensemble.groups, :model_name)
+model_keys(ensemble) = keys(ensemble.groups)
 
 ## Select methods
 # Function to convienently select some models from groups or ensembles
@@ -70,8 +70,7 @@ function select(group::SDMgroup, machine_indices::AbstractVector{<:Integer})
         return SDMgroup(
             group.sdm_machines[machine_indices],
             group.model,
-            group.resampler,
-            group.model_name,
+            group.model_key,
         )
     end
 end
@@ -112,7 +111,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble{K}) whe
     
     println(io, "trained SDMensemble, containing $(n_machines(ensemble)) SDMmachines across $(Base.length(ensemble)) SDMgroups \n")
 
-    print("Uses the following models: \n")   
+    println("Uses the following models:")   
     for k in K
         modeltype = MLJBase.name(model(ensemble[k]))
         printstyled(io, k, color = :blue)
@@ -145,7 +144,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", group::SDMgroup)
     println(io, "trained SDMgroup, containing $(length(group.sdm_machines)) SDMmachines")
-    println(io, "name: $(group.model_name)")
+    println(io, "name: $(group.model_key)")
     println(io, "model type: $(MLJBase.name(group.model))")
 end
 
