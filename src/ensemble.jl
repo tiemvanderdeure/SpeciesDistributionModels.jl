@@ -61,6 +61,9 @@ end
 
 model_keys(ensemble) = keys(ensemble.groups)
 
+test_rows(mach::SDMmachine) = _gettestrows(data(mach), mach.fold)
+train_rows(mach::SDMmachine) = _gettrainrows(data(mach), mach.fold)
+
 ## Select methods
 # Function to convienently select some models from groups or ensembles
 function select(group::SDMgroup, machine_indices::AbstractVector{<:Integer})

@@ -76,7 +76,7 @@ function _reformat_and_predict(e::SDMensemble, data, clamp::Bool, reducer::Funct
     if by_group
         # pass the reducer to each group, then combine into a namedtuple
         group_pr = _map(resource)(g -> _reformat_and_predict(g, data, clamp::Bool, reducer, resource), e)
-        NamedTuple{Tuple(model_names(e))}(group_pr)
+        NamedTuple{model_keys(e)}(group_pr)
     else
         # predict without reducing, then apply the reducer
         pr = _map(resource)(g -> _reformat_and_predict(g, data, clamp::Bool, nothing, resource), e)
