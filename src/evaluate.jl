@@ -77,23 +77,23 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMmachineEvaluation)
     println(io, "SDMmachineEvaluation")
 
-    measures = collect(keys(measures(evaluation)))
+    measure_names = collect(keys(measures(evaluation)))
     sets = evaluation_sets(evaluation)
     scores = map(sets) do s
         round.(getfield.(collect(evaluation.results[s]), :score); digits = 2)
     end
     
-    table_cols = hcat(measures, scores...)
+    table_cols = hcat(measure_names, scores...)
     header = (["measure"; string.(sets)...])
     PrettyTables.pretty_table(io, table_cols; header = header)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMgroupEvaluation)
-    measures = collect(keys(measures(evaluation)))
+    measure_names = collect(keys(measures(evaluation)))
     train_scores, test_scores = machine_evaluations(evaluation)
     folds = getfield.(evaluation.group, :fold)
 
-    println(io, "$(typeof(evaluation)) with $(length(measures)) performance measures")
+    println(io, "$(typeof(evaluation)) with $(length(measure_names)) performance measures")
 
     println(io, "Testing data")
     PrettyTables.pretty_table(io, merge((; fold = folds),  test_scores))
@@ -102,8 +102,8 @@ function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMgroupEvaluatio
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMensembleEvaluation)
-    measures = collect(keys(evaluation[1][1].measures))#collect(keys(measures(evaluation)))
-    models = getfield.(evaluation.ensemble, :model_name)
+    measurekeys = collect(keys(measures(evaluation)))
+    models = collect(modelkeys(evaluation.ensemble))
 
     # get scores from each group
     machine_scores = machine_evaluations.(evaluation)
@@ -111,7 +111,7 @@ function Base.show(io::IO, mime::MIME"text/plain", evaluation::SDMensembleEvalua
     scores = vcat(machine_scores, ensemble_scores)
     # get mean test and train from each group for each measure.
     # then invert to a namedtuple where measures are keys
-    println(io, "$(typeof(evaluation)) with $(length(measures)) performance measures")
+    println(io, "$(typeof(evaluation)) with $(length(measurekeys)) performance measures")
 
     for k in keys(scores[1])
         println(io, string(k))
@@ -171,10 +171,10 @@ function _ev_ydata(sdm_machine, train, test, validation)
     machdata = data(sdm_machine)
     d_y = (;)
     if train 
-        d_y = merge(d_y, (;train = view(machdata.response, sdm_machine.train_rows)))
+        d_y = merge(d_y, (;train = view(machdata.response, _gettrainrows(machdata, sdm_machine.fold))))
     end
     if test
-        d_y = merge(d_y, (;test = view(machdata.response, sdm_machine.test_rows)))
+        d_y = merge(d_y, (;test = view(machdata.response, _gettestrows(machdata, sdm_machine.fold))))
     end
     if !isempty(validation)
         d_y = merge(d_y, (;validation = validation[2]))
@@ -185,17 +185,17 @@ end
 function _ev_predict(sdm_machine::SDMmachine, train, test, validation)
     machdata = data(sdm_machine)
     # set up namedtuple with data/rows, throw out if nothing/false
-    d_X = (;)
+    d_y = (;)
     if train
-        d_X = merge(d_X, (;train = Tables.subset(machdata.predictor, sdm_machine.train_rows)))
+        d_y = merge(d_y, (;train = MLJBase.predict(sdm_machine.machine; rows = _gettrainrows(machdata, sdm_machine.fold))))
     end
     if test
-        d_X = merge(d_X, (;test =  Tables.subset(machdata.predictor, sdm_machine.test_rows)))
+        d_y = merge(d_y, (; test = MLJBase.predict(sdm_machine.machine; rows = _gettestrows(machdata, sdm_machine.fold))))
     end
     if !isempty(validation)
-        d_X = merge(d_X, (;validation = validation[1]))
+        d_y = merge(d_y, (; validation = MLJBase.predict(sdm_machine.machine, validation[1])))
     end
-    map(X -> MLJBase.predict(sdm_machine.machine, X), d_X)
+    return d_y
 end
 
 function _evaluate(sdm_machine::SDMmachine, y_hats::NamedTuple, ys::NamedTuple, measures::NamedTuple)

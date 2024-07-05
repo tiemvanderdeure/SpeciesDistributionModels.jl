@@ -1,13 +1,13 @@
 function _model_controls!(fig, ensemble)
     toggles = [Makie.Toggle(fig, active = true) for i in 1:Base.length(ensemble)]
-    labels = [Makie.Label(fig, String(key)) for key in SDM.model_names(ensemble)]
+    labels = [Makie.Label(fig, String(key)) for key in SDM.model_keys(ensemble)]
     g = Makie.grid!(hcat(toggles, labels))
     return g, toggles
 end
 
 
 function Makie.boxplot(ev::SDMensembleEvaluation, measure::Symbol)
-    modelnames = Base.string.(model_names(ev.ensemble))
+    modelnames = collect(Base.string.(model_keys(ev.ensemble)))
     f = Makie.Figure()
     
     for (i, t) in enumerate((:train, :test))
@@ -55,13 +55,13 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
 
     idx_by_model = map(enumerate(ensemble)) do (i, e)
         fill(i, Base.length(e))
-    end |> NamedTuple{Tuple(model_names(ensemble))}
+    end |> NamedTuple{Tuple(model_keys(ensemble))}
 
     n_models = length(idx_by_model)
 
     conf_mats = mapreduce(hcat, ensemble) do gr
         map(gr) do sdm_machine
-            rows = sdm_machine.test_rows
+            rows = SDM.test_rows(sdm_machine)
             y_hat = SDM.MLJBase.predict(sdm_machine.machine; rows)
             y = data(sdm_machine).response[rows]
             _conf_mats_from_thresholds(SDM.MLJBase.pdf.(y_hat, true), y, thresholds)

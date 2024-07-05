@@ -1,45 +1,46 @@
-using SpeciesDistributionModels, MLJBase
+using SpeciesDistributionModels, MLJBase, MLJModels, Tables
 import SpeciesDistributionModels as SDM
 using StableRNGs, Distributions, Test
 using Makie
 
 rng = StableRNG(0)
-using Random; rng = Random.GLOBAL_RNG
+#using Random; rng = Random.GLOBAL_RNG
 # some mock data
 n = 100
 backgrounddata = (a = rand(rng, n), b = rand(rng, n), c = rand(rng, n))
 presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
 @testset "SpeciesDistributionModels.jl" begin
-    models = [
-        SDM.random_forest(; rng)
-        SDM.random_forest(; max_depth = 3, rng)
-        SDM.linear_model()
-        SDM.boosted_regression_tree(; rng)
-    ]
-
-    ensemble = sdm(
-        presencedata, backgrounddata;
-        models = models, 
-        resampler = SDM.MLJBase.CV(; shuffle = true, nfolds = 5, rng), 
-        threaded = false
-    )
+    ## data
+    data = sdmdata(presencedata, backgrounddata; resampler = CV(nfolds = 5, shuffle = true))
     # alternative sdm method
     x = map(presencedata, backgrounddata) do p, b
         [p; b]
     end
     y = [trues(Tables.rowcount(presencedata)); falses(Tables.rowcount(backgrounddata))]
-    ensemble2 = sdm(x, y; models, resampler = SDM.NoResampling())
-    
+    data2 = sdmdata(x, y)
+
+    ## ensemble
+    models = (
+        rf = SDM.random_forest(; rng),
+        rf2 = OneHotEncoder() |> SDM.random_forest(; max_depth = 3, rng),
+        lm = SDM.linear_model(),
+        brt = SDM.boosted_regression_tree(; rng)
+    )
+
+    ensemble = sdm(data, models;
+        threaded = false
+    )
+
     evaluation = SDM.evaluate(ensemble; validation = (presencedata, backgrounddata))
     evaluation2 = SDM.evaluate(ensemble)
     @test evaluation isa SDM.SDMensembleEvaluation
     @test evaluation[1] isa SDM.SDMgroupEvaluation
     @test evaluation[1][1] isa SDM.SDMmachineEvaluation
-    @test evaluation.measures isa NamedTuple
+    @test SDM.measures(evaluation) isa NamedTuple
     mach_evals = SDM.machine_evaluations(evaluation)
     @test mach_evals isa NamedTuple{(:train, :test, :validation)}
-    @test mach_evals.train isa NamedTuple{(keys(evaluation.measures))}
+    @test mach_evals.train isa NamedTuple{(keys(SDM.measures(evaluation)))}
 
     machine_aucs = SDM.machine_evaluations(evaluation).test.auc
 
@@ -49,11 +50,11 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
     @test pr2 isa Vector
     @test collect(keys(pr1)) == SDM.machine_keys(ensemble)
-    @test collect(keys(pr3)) == SDM.model_names(ensemble)
+    @test (keys(pr3)) == SDM.model_keys(ensemble)
     eltype(pr3) == Vector{Int64}
 
     @test_throws ArgumentError SDM.predict(ensemble, backgrounddata.a)
-    @test_throws Exception SDM.predict(ensemble, backgrounddata[(:a,)])
+    @test_throws ArgumentError SDM.predict(ensemble, backgrounddata[(:a,)])
     @test_throws Exception SDM.predict(ensemble, backgrounddata; by_group = true)
 
     # explain
@@ -84,3 +85,4 @@ end
     @test remove_collinear(data_with_perfect_collinearity; method = SDM.Gvif(; threshold = 2.), silent = true) == (:a, )
     @test remove_collinear(data_with_perfect_collinearity; method = SDM.Pearson(; threshold = 0.65), silent = true) == (:a, )
 end
+

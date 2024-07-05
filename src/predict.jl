@@ -1,8 +1,23 @@
-#### Helper functions ####
+function _check_data(x, d)
+    Tables.istable(d) || throw(ArgumentError("data is a $(typeof(d)), wich is not a Tables.jl-compatible table"))
+    colnames = Tables.columnnames(Tables.columns(d))
+    for key in predictorkeys(data(x))
+        key in colnames || throw(ArgumentError("data is missing predictor variable $key"))
+    end
+
+end
+
+function _check_data(x, rs::Rasters.AbstractRasterStack)
+    layernames = Rasters.name(rs)
+    for key in predictorkeys(data(x))
+        key in layernames || throw(ArgumentError("data is missing predictor variable $key"))
+    end
+
+end
 
 # Reformat data so that it can be used in predict. Different models use different data types
 function _reformat_data(m::SDMmachine, d, clamp::Bool)
-    traindata = data(m).predictor
+    traindata = predictor(data(m))
     newdata = Tables.columntable(d)[keys(traindata)]
     if clamp
         for k in keys(traindata)
@@ -12,7 +27,7 @@ function _reformat_data(m::SDMmachine, d, clamp::Bool)
         end
     end
 
-    return MLJBase.reformat(m.machine.old_model, newdata)[1]
+    return MLJBase.reformat(MLJBase.last_model(m.machine), newdata)[1]
 end
 #### _predict methods ####
 # _predict uses already-reformatted data.
@@ -21,7 +36,9 @@ end
 # Machine-level _predict method. All other _predict methods eventually call this
 function _predict(m::SDMmachine, data)
     # predict
-    prediction = MLJBase.predict(m.machine.old_model, m.machine.fitresult, data)
+    mach = m.machine
+    prediction = MLJBase.predict(MLJBase.last_model(mach), mach.fitresult, data)
+    prediction = MLJBase.get!(prediction, :predict, mach)
     # convert to Floats
     return MLJBase.pdf.(prediction, true)
 end
@@ -59,7 +76,7 @@ function _reformat_and_predict(e::SDMensemble, data, clamp::Bool, reducer::Funct
     if by_group
         # pass the reducer to each group, then combine into a namedtuple
         group_pr = _map(resource)(g -> _reformat_and_predict(g, data, clamp::Bool, reducer, resource), e)
-        NamedTuple{Tuple(model_names(e))}(group_pr)
+        NamedTuple{model_keys(e)}(group_pr)
     else
         # predict without reducing, then apply the reducer
         pr = _map(resource)(g -> _reformat_and_predict(g, data, clamp::Bool, nothing, resource), e)
@@ -75,12 +92,19 @@ _reformat_and_predict(e::SDMensemble, rs::Rasters.AbstractRasterStack, clamp::Bo
     _reformat_and_predict_raster(e, rs, clamp, reducer, by_group, resource)
 _reformat_and_predict(g::SDMgroup, rs::Rasters.AbstractRasterStack, clamp::Bool, reducer::Union{<:Function, <:Nothing}, resource::AbstractCPU) = 
     _reformat_and_predict_raster(g, rs, clamp, reducer, resource)
-_reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Bool, resource::AbstractCPU) =
-    _reformat_and_predict_raster(m, rs, clamp, resource)
+_reformat_and_predict(m::SDMmachine, rs::Rasters.AbstractRasterStack, clamp::Bool) =
+    _reformat_and_predict_raster(m, rs, clamp)
 
 function _reformat_and_predict_raster(s::Union{<:SDMensemble, SDMgroup, SDMmachine}, rs::Rasters.AbstractRasterStack, args...)
-    missing_mask = Rasters.boolmask(rs)
-    d = rs[missing_mask]
+    rs_preds = rs[predictorkeys(data(s))]
+    missing_mask = Rasters.boolmask(rs_preds)
+    d = rs_preds[missing_mask]
+    if any(map(x -> Missing <: eltype(x), rs_preds))
+        # to get rid of Union{Missing, Float64} etc.
+        layertypes = map(x -> Base.nonmissingtype(eltype(x)), (Rasters.layers(rs_preds)))
+        nttype = NamedTuple{keys(layertypes), Tuple{values(layertypes)...}}
+        d = nttype.(d)
+    end
     pr =  _reformat_and_predict(s, d, args...)
     return _build_raster(missing_mask, pr)
 end

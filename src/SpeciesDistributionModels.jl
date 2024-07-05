@@ -7,13 +7,13 @@ import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess
 using MLJBase: pdf
 using Rasters: Raster, RasterStack, Band
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
-using ComputationalResources: CPU1, CPUThreads, AbstractCPU
+using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
 
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy
-import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy
+import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic
 
-export SDMensemble, predict, sdm, select, machines, machine_keys,
+export SDMensemble, predict, sdm, sdmdata, select, machines, machine_keys,
     remove_collinear,
     explain, variable_importance, ShapleyValues,
     SDMmachineExplanation, SDMgroupExplanation, SDMensembleExplanation,
@@ -23,12 +23,12 @@ export SDMensemble, predict, sdm, select, machines, machine_keys,
 export auc, kappa, sensitivity, selectivity, accuracy,
     Continuous, OrderedFactor, Multiclass, Count,
     StratifiedCV, CV, Holdout, ResamplingStrategy
-
+#include("learningnetwork.jl")
+include("models.jl")
 include("data_utils.jl")
 include("resample.jl")
 # export stubs for extensions
 export interactive_response_curves, interactive_evaluation
-
 
 include("collinearity.jl")
 include("models.jl")
