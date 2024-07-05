@@ -1,4 +1,4 @@
-using SpeciesDistributionModels, MLJBase, Tables
+using SpeciesDistributionModels, MLJBase, MLJModels, Tables
 import SpeciesDistributionModels as SDM
 using StableRNGs, Distributions, Test
 using Makie
@@ -37,10 +37,10 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
     @test evaluation isa SDM.SDMensembleEvaluation
     @test evaluation[1] isa SDM.SDMgroupEvaluation
     @test evaluation[1][1] isa SDM.SDMmachineEvaluation
-    @test evaluation.measures isa NamedTuple
+    @test SDM.measures(evaluation) isa NamedTuple
     mach_evals = SDM.machine_evaluations(evaluation)
     @test mach_evals isa NamedTuple{(:train, :test, :validation)}
-    @test mach_evals.train isa NamedTuple{(keys(evaluation.measures))}
+    @test mach_evals.train isa NamedTuple{(keys(SDM.measures(evaluation)))}
 
     machine_aucs = SDM.machine_evaluations(evaluation).test.auc
 
@@ -50,7 +50,7 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
     @test pr2 isa Vector
     @test collect(keys(pr1)) == SDM.machine_keys(ensemble)
-    @test collect(keys(pr3)) == SDM.model_names(ensemble)
+    @test (keys(pr3)) == SDM.model_keys(ensemble)
     eltype(pr3) == Vector{Int64}
 
     @test_throws ArgumentError SDM.predict(ensemble, backgrounddata.a)
@@ -86,21 +86,3 @@ end
     @test remove_collinear(data_with_perfect_collinearity; method = SDM.Pearson(; threshold = 0.65), silent = true) == (:a, )
 end
 
-using SpeciesDistributionModels, MLJBase, Tables
-import SpeciesDistributionModels as SDM
-
-import EvoTrees: EvoTreeClassifier
-    using Statistics
-    using Rasters: RasterStack, Raster
-    xdim = Rasters.X(1:10); ydim = Rasters.Y(1:10)
-    rs = RasterStack([Raster(rand(xdim,ydim)) for i in 1:2]...; name = [:a, :b])
-
-    X = (a = rand(100), b = rand(Float32, 100) .+ 2)
-    y = MLJBase.categorical(rand(Bool, 100))
-    ensemble = SDM.SdmEnsemble(tree = EvoTreeClassifier(), tree2 = EvoTreeClassifier(); reducing_function = mean, cache =true)
-
-    mach = machine(ensemble, X, y)
-    MLJBase.fit!(sp; force = true)
-    MLJBase.predict(sp, rs)
-
-    ev = MLJBase.evaluate!(sp, measure = auc)
