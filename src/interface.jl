@@ -6,15 +6,16 @@ Construct an `SDMdata` object from species `presences` and `absences`.
 Alternatively, from a table with predictor variables `X` and a `BitVector` `y`, where `false` represents absence and `true` represents presence.
 
 ## Keywords
-    `resampler`: The resampling strategy to be used. Should be a `MLJBase.ResamplingStrategy`, or a `Vector` of `Tuple`s with the form `(train, test)`. 
+- `resampler`: The resampling strategy to be used. Should be a `MLJBase.ResamplingStrategy`, or a `Vector` of `Tuple`s with the form `(train, test)`. 
     Defaults to `NoResampling()`. If `resampler` is a `CV`, `shuffle` is internally set to `true`.
-    `predictors`: a `Tuple` of `Symbols` with the names of the predictor values to be used. By default, all predictor variables in `X`,
-    or all predictor variables in both `presences` and `absences` are used..
+- `predictors`: a `Tuple` of `Symbols` with the names of the predictor values to be used. By default, all predictor variables in `X`,
+   or all predictor variables in both `presences` and `absences` are used..
 
 ## Returns
 An `SDMdata` object containing the data provided. This object can be used to construct an `SDMensemble`.
 
 ## Example
+```
 using Rasters, SpeciesDistributionModels
 A = rand(10,10)
 B = rand(10,10)
@@ -22,12 +23,14 @@ st = RasterStack((a=A, b=B), (X, Y); missingval=(a=missing,b=missing))
 
 presence_points = [(1, 1), (2, 2), (3, 3), (4, 4)]
 absence_points = [(5, 5), (6, 6), (7, 7), (8, 8)]
+
 p = extract(st, presence_points)
 a = extract(st, absence_points)
-mydata = sdmdata(p, a; resampler = CV(nfolds = 5))
-mydata2 = sdmdata([p; a], [trues(4); falses(4)]; resampler = [([1,2],[5,6]), ([3,4], [7,8])])
-"""
 
+mydata = sdmdata(p, a; resampler = CV(nfolds = 2)) # 2-fold cross validation
+mydata2 = sdmdata([p; a], [trues(4); falses(4)]; resampler = [([1,2],[5,6]), ([3,4], [7,8])]) # provide resampling rows
+```
+"""
 function sdmdata(
     presences,
     absences;
@@ -47,18 +50,20 @@ Construct an ensemble.
 `models`: a `NamedTuple` with the models to be used in the ensemble.
 
 ## Keywords
-`models`: a `Vector` of the models to be used in the ensemble. All models must be MLJ-supported Classifiers. 
-For a full list of supported models, see https://alan-turing-institute.github.io/MLJ.jl/stable/model_browser/#Classification
-`predictors`: a `Vector` of `Symbols` with the names of the predictor values to be used. By default, all pdf
-`verbosity`: an `Int` value that regulates how much information is printed.
-`cache`: is passed to `MLJBase.machine`. Specify cache=false to prioritize memory management over speed.
-`scitype_check_level`: is passed to `MLJBase.machine`. Specify scitype_check_level=0 to disable scitype checking.
+- `models`: a `Vector` of the models to be used in the ensemble. All models must be MLJ-supported Classifiers. 
+- For a full list of supported models, see https://alan-turing-institute.github.io/MLJ.jl/stable/model_browser/#Classification
+- `predictors`: a `Vector` of `Symbols` with the names of the predictor values to be used. By default, all pdf
+- `verbosity`: an `Int` value that regulates how much information is printed.
+- `cache`: is passed to `MLJBase.machine`. Specify cache=false to prioritize memory management over speed.
+- `scitype_check_level`: is passed to `MLJBase.machine`. Specify scitype_check_level=0 to disable scitype checking.
 
 ## Example
+```julia
 using SpeciesDistributionModels, Maxnet, MLJGLMInterface
 mydata = sdmdata(presences, absences; resampler = CV(nfolds = 5))
 models = (maxnet = MaxnetBinaryClassifier(), glm = LinearBinaryClassifier())
 ensemble = sdm(mydata, models)
+```
 """
 function sdm(
     data, models;
