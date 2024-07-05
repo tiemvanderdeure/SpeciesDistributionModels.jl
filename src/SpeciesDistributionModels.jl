@@ -2,7 +2,7 @@ module SpeciesDistributionModels
 
 import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random, ThreadsX
 import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
-import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess
+import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess, Distances
 
 using MLJBase: pdf
 using Rasters: Raster, RasterStack, Band
@@ -14,7 +14,7 @@ using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy
 import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic
 
 export SDMensemble, predict, sdm, sdmdata, select, machines, machine_keys,
-    remove_collinear,
+    remove_collinear, thin,
     explain, variable_importance, ShapleyValues,
     SDMmachineExplanation, SDMgroupExplanation, SDMensembleExplanation,
     SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation
@@ -39,5 +39,6 @@ include("explain/shapley.jl")
 include("evaluate.jl")
 include("interface.jl")
 include("extensions.jl")
+include("thin.jl")
 
 end
