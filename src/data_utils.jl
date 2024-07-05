@@ -26,7 +26,14 @@ function Base.show(io::IO, mime::MIME"text/plain", data::SDMdata{K}) where K
     printstyled(length(y) - sum(y), bold = true)
     print(" absence points. \n \n")
 
-    print("Data is divided into $(nfolds(data)) folds. \n \n")
+    printstyled("Resampling: \n", bold = true)
+    println("Data is divided into $(nfolds(data)) folds using resampling strategy $(resampler(data)).")
+
+    n_presences = length.(getindex.(traintestpairs(data), 1))
+    n_absences = length.(getindex.(traintestpairs(data), 2))
+    table_cols = hcat(1:nfolds(data), n_presences, n_absences)
+    header = (["fold", "presences", "absences"])
+    PrettyTables.pretty_table(io, table_cols; header = header)
 
     printstyled("Predictor variables: \n", bold = true)
     Base.show(io, mime, MLJBase.schema(predictor(data)))
@@ -46,6 +53,7 @@ predictorkeys(d::SDMdata{K}) where K = K
 response(d::SDMdata) = convert(AbstractArray{Bool}, d.response)
 geometry(d::SDMdata) = d.geometry
 traintestpairs(d::SDMdata) = d.traintestpairs
+resampler(d::SDMdata) = d.resampler
 nfolds(d::SDMdata) = length(d.traintestpairs)
 
 function _sdmdata(presences, absences, resampler, ::Nothing)
@@ -61,10 +69,10 @@ end
 
 # in case input is a table
 function _sdmdata(X, response::BitVector, resampler, ::Nothing)
-    columns = Tables.columns(X)
+    columns = Tables.columntable(X)
     Tables.rowcount(columns) == length(response) || error("Number of rows in predictors and response do not match")
     predictorkeys = Tables.columnnames(columns)
-    _sdmdata(X, response, resampler, predictorkeys)
+    _sdmdata(columns, response, resampler, predictorkeys)
 end
 
 _sdmdata(X::Tables.ColumnTable{K}, y::BitVector, resampler, predictorkeys::NTuple{<:Any, <:Symbol}) where K =
@@ -74,26 +82,33 @@ _sdmdata(X::Tables.ColumnTable{K}, y::BitVector, resampler, predictorkeys::NTupl
         _sdmdata(X[predictorkeys], boolean_categorical(y), resampler)
     end
 
-
+function _sdmdata(
+    X::Tables.ColumnTable, 
+    y::BooleanCategorical, 
+    resampler::CV, 
+)
+    shuffled_resampler = CV(; nfolds = resampler.nfolds, rng = resampler.rng, shuffle = true)
+    traintestpairs = MLJBase.train_test_pairs(shuffled_resampler, eachindex(y), X, y)
+    _sdmdata(X, y, traintestpairs, shuffled_resampler)
+end
 function _sdmdata(
     X::Tables.ColumnTable, 
     y::BooleanCategorical, 
     resampler::MLJBase.ResamplingStrategy, 
 )
-    geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
-    X = Base.structdiff(X, NamedTuple{(:geometry,)})
     traintestpairs = MLJBase.train_test_pairs(resampler, eachindex(y), X, y, geometries)
-    SDMdata(X, y, geometries, traintestpairs, resampler)
+    _sdmdata(X, y, traintestpairs, resampler)
 end
 
 function _sdmdata(
     X::Tables.ColumnTable, 
     y::BooleanCategorical, 
-    traintestpairs::MLJBase.TrainTestPairs, 
+    traintestpairs::MLJBase.TrainTestPairs,
+    resampler = CustomRows()
 )
     geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
     X = Base.structdiff(X, NamedTuple{(:geometry,)})
-    SDMdata(X, y, geometries, traintestpairs, nothing)
+    SDMdata(X, y, geometries, traintestpairs, resampler)
 end
 
 cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
