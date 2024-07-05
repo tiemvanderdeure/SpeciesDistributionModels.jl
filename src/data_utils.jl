@@ -96,7 +96,7 @@ function _sdmdata(
     y::BooleanCategorical, 
     resampler::MLJBase.ResamplingStrategy, 
 )
-    traintestpairs = MLJBase.train_test_pairs(resampler, eachindex(y), X, y, geometries)
+    traintestpairs = MLJBase.train_test_pairs(resampler, eachindex(y), X, y)
     _sdmdata(X, y, traintestpairs, resampler)
 end
 
