@@ -20,28 +20,28 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", data::SDMdata{K}) where K
     y = response(data)
-    print("SDMdata object with ")
+    print(io, "SDMdata object with ")
     printstyled(sum(y), bold = true)
-    print(" presence points and ")
+    print(io, " presence points and ")
     printstyled(length(y) - sum(y), bold = true)
-    print(" absence points. \n \n")
+    print(io, " absence points. \n \n")
 
-    printstyled("Resampling: \n", bold = true)
-    println("Data is divided into $(nfolds(data)) folds using resampling strategy $(resampler(data)).")
+    printstyled(io, "Resampling: \n", bold = true)
+    println(io, "Data is divided into $(nfolds(data)) folds using resampling strategy $(resampler(data)).")
 
     n_presences = length.(getindex.(traintestpairs(data), 1))
     n_absences = length.(getindex.(traintestpairs(data), 2))
     table_cols = hcat(1:nfolds(data), n_presences, n_absences)
-    header = (["fold", "presences", "absences"])
+    header = (["fold", "# train", "# test"])
     PrettyTables.pretty_table(io, table_cols; header = header)
 
-    printstyled("Predictor variables: \n", bold = true)
+    printstyled(io, "Predictor variables: \n", bold = true)
     Base.show(io, mime, MLJBase.schema(predictor(data)))
 
     if isnothing(geometry(data)) 
-        print("Does not contain geometry data")
+        print(io, "Does not contain geometry data")
     else
-        print("Also contains geometry data")
+        print(io, "Also contains geometry data")
     end
 end
 
