@@ -21,9 +21,9 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", data::SDMdata{K}) where K
     y = response(data)
     print(io, "SDMdata object with ")
-    printstyled(sum(y), bold = true)
+    printstyled(io, sum(y), bold = true)
     print(io, " presence points and ")
-    printstyled(length(y) - sum(y), bold = true)
+    printstyled(io, length(y) - sum(y), bold = true)
     print(io, " absence points. \n \n")
 
     printstyled(io, "Resampling: \n", bold = true)
