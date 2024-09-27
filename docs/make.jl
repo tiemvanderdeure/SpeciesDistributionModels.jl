@@ -1,25 +1,25 @@
+using Documenter, DocumenterVitepress
 using SpeciesDistributionModels
-using Documenter
-
-DocMeta.setdocmeta!(SpeciesDistributionModels, :DocTestSetup, :(using SpeciesDistributionModels); recursive=true)
 
 makedocs(;
     modules=[SpeciesDistributionModels],
-    authors="Tiem van der Deure <tvd@sund.ku.dk>, Rafael Schouten <rafaelschouten@gmail.com>",
-    repo="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/{commit}{path}#{line}",
+    authors= "Tiem van der Deure <tvd@sund.ku.dk>, Rafael Schouten <rafaelschouten@gmail.com>",
+    repo="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
     sitename="SpeciesDistributionModels.jl",
-    format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://tiemvanderdeure.github.io/SpeciesDistributionModels.jl",
-        edit_link="master",
-        assets=String[],
+    format=DocumenterVitepress.MarkdownVitepress(
+        repo = "https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
+        devurl = "dev",
+        devbranch = "master",
+        push_preview = true,
+        deploy_url = "tiemvanderdeure.github.io/SpeciesDistributionModels.jl",
     ),
-    pages=[
-        "Home" => "index.md",
-    ],
+    warnonly = true,
 )
 
-deploydocs(;
+deploydocs(; 
     repo="github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
-    devbranch="master",
+    target = "build", # this is where Vitepress stores its output
+    branch = "gh-pages",
+    devbranch = "master",
+    push_preview = true
 )
