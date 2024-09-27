@@ -114,7 +114,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble{K}) whe
     
     println(io, "trained SDMensemble, containing $(n_machines(ensemble)) SDMmachines across $(Base.length(ensemble)) SDMgroups \n")
 
-    println("Uses the following models:")   
+    println(io, "Uses the following models:")   
     for k in K
         modeltype = MLJBase.name(model(ensemble[k]))
         printstyled(io, k, color = :blue)

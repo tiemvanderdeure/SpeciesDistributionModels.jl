@@ -1,16 +1,17 @@
 """
-    thin(x, cutoff; distance = Haversine(), [rng])
+    thin([rng], x, cutoff; distance = Haversine(), [geometrycolumn])
 
     Thin spatial data by removing points that are closer than `cutoff` distance
     to the nearest other point in the dataset.
 
     ## Arguments
+    - `rng`: a random number generator. The default is `Random.GLOBAL_RNG()`.
     - `x`: an `AbstractVector` that iterates points, or a table with a `:geometry` column.
     - `cutoff`: the distance threshold in units of `distance`.
     ## Keywords
     - `distance`: the distance metric used to calculate distances between points. The default
     is `Haversine()`, which uses the Haversine formula to calculate the distance between coordinates in meter units.
-    - `rng`: a random number generator. The default is `Random.GLOBAL_RNG()`.
+    - `geometrycolumn`: the name of the column in the table that contains the points, if `x` is a table. Usually defaults to `:geometry`.
 
     ## Example
     ```jldoctest
@@ -20,7 +21,7 @@
     # thin to 1000 meters
     thin(geometries, 1000)
     # thin to 1 degree
-    thin(geometries, 1; distance = Euclidean(), rng = Xoshiro(123))
+    thin(Xoshiro(123), geometries, 1; distance = Euclidean())
 
     # output
     2-element Vector{Tuple{Int64, Real}}:
@@ -28,21 +29,24 @@
     (1, 0)
     ```
 """
-function thin(x, cutoff; distance = Distances.Haversine(), rng = Random.GLOBAL_RNG)
-    if Tables.istable(x)
-        geoms = Tables.getcolumn(x, :geometry)
-        indices = _thin(geoms, cutoff, distance, rng)
+thin(x, cutoff; kw...) = thin(Random.GLOBAL_RNG, x, cutoff; kw...)
+
+function thin(rng::Random.AbstractRNG, x, cutoff; distance = Distances.Haversine(), geometrycolumn = nothing) # = first(GI.geometrycolumn(x))
+    if !(x isa AbstractVector{<:GI.NamedTuplePoint}) && Tables.istable(x)
+        geomcol = isnothing(geometrycolumn) ? first(GI.geometrycolumns(data)) : geometrycolumn
+        geoms = Tables.getcolumn(Tables.Columns(x), geomcol)
+        indices = _thin(rng, geoms, cutoff, distance)
         return Tables.subset(x, indices)
     elseif x isa AbstractVector
-        _geoms = unique(x)
-        indices = _thin(_geoms, cutoff, distance, rng)
-        return _geoms[indices]
+        geoms = unique(x)
+        indices = _thin(rng, geoms, cutoff, distance)
+        return geoms[indices]
     else
-        throw(ArgumentError("x must be an AbstractVector or a Table with a :geometry column."))
+        throw(ArgumentError("x must be an AbstractVector or a Table with a :$geometrycolumn column."))
     end
 end
 
-function _thin(geoms::AbstractVector, cutoff::Real, distance::Distances.Metric, rng::Random.AbstractRNG)
+function _thin(rng::Random.AbstractRNG, geoms::AbstractVector, cutoff::Real, distance::Distances.Metric)
     dist_matrix = Distances.pairwise(distance, geoms)
 
     dist_mask = dist_matrix .< cutoff

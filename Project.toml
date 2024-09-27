@@ -12,6 +12,7 @@ DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 EvoTrees = "f6006082-12f8-11e9-0c9c-0d5d367ab1e5"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 Lasso = "b4fcebef-c861-5a0f-a7e2-ba9dc32b180a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Loess = "4345ca2d-374a-55d4-8d30-97f9976e7612"
@@ -49,8 +50,8 @@ julia = "1.9"
 
 [extras]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MLJModels = "d491faf4-2d78-11e9-2867-c94bc002c0b7"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
