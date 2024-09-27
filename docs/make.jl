@@ -4,15 +4,18 @@ using SpeciesDistributionModels
 makedocs(;
     modules=[SpeciesDistributionModels],
     authors= "Tiem van der Deure <tvd@sund.ku.dk>, Rafael Schouten <rafaelschouten@gmail.com>",
-    repo="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
     sitename="SpeciesDistributionModels.jl",
     format=DocumenterVitepress.MarkdownVitepress(
-        repo = "https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
+        repo = "github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
         devurl = "dev",
         devbranch = "master",
-        deploy_url = "tiemvanderdeure.github.io/SpeciesDistributionModels.jl",
     ),
     warnonly = true,
+    pages = [
+        "Home" => "index.md",
+        "Getting started" => "example.md",
+        "API" => "api.md"
+        ]
 )
 
 deploydocs(; 

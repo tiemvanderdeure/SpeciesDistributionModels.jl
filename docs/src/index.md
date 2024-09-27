@@ -1,6 +1,8 @@
+```@raw html
 ---
 layout: home
 ---
+```
 
 # SpeciesDistributionModels
 
