@@ -10,7 +10,6 @@ makedocs(;
         repo = "https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
         devurl = "dev",
         devbranch = "master",
-        push_preview = true,
         deploy_url = "tiemvanderdeure.github.io/SpeciesDistributionModels.jl",
     ),
     warnonly = true,
