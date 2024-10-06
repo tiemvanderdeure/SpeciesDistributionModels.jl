@@ -15,6 +15,7 @@ The following example models the distribution of _Anopheles nili_, a malaria vec
 We'll use several other packages in addition to SpeciesDistributionModels
 ```julia
 using SpeciesDistributionModels, Rasters, RasterDataSources, GBIF2, LibGEOS, ArchGDAL, StatsBase
+import GeometryOps as GO
 import SpeciesDistributionModels as SDM
 ```
 
@@ -28,7 +29,7 @@ presence_points = unique(occurrences.geometry)
 
 The region of interest will be defined by a convex hull around our presence points, buffered by 5 degrees.
 ```julia
-roi = buffer(convexhull(MultiPoint(LibGEOS.to_geos.(presence_points))), 5)
+roi = GO.buffer(GO.convex_hull(presence_points), 5)
 ```
 
 Now we'll load bioclimatic variables from WorldClim, using `RasterDataSources` and `Rasters`.
