@@ -48,26 +48,30 @@ end
 
 function _thin(rng::Random.AbstractRNG, geoms::AbstractVector, cutoff::Real, distance::Distances.Metric)
     dist_matrix = Distances.pairwise(distance, geoms)
-
     dist_mask = dist_matrix .< cutoff
     dist_sum = vec(sum(dist_mask; dims = 1))
-    s = size(dist_sum, 1)
+    l = length(dist_sum)
+    keep_mask = trues(l)
 
-    indices = collect(1:s)
-
-    for i in 1:s
-        m = maximum(dist_sum)
+    for _ in 1:l
+        m = 1
+        for i in 1:l
+            if keep_mask[i]
+                m = max(m, dist_sum[i])
+            end
+        end
         if m == 1
             break
         else
             drop = rand(rng, findall(dist_sum .== m))
-            dist_sum .-= @view dist_mask[drop, :]
-            drop_indices = 1:s .!= drop
-            dist_mask = @view dist_mask[drop_indices, drop_indices]
-            dist_sum = @view dist_sum[drop_indices]
-            s -= 1
-            indices = @view indices[drop_indices]
+            keep_mask[drop] = false
+            for j in 1:l
+                if keep_mask[j] && dist_mask[j, drop]
+                    dist_sum[j] -= 1
+                end
+            end
         end
     end
-    return indices
+    
+    return keep_mask
 end
