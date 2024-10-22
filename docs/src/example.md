@@ -1,15 +1,6 @@
 # Example of a full species distribution modelling workflow
 This example fits and projects species distribution models for the tree species _Eucaplytus regnans_ from scratch.
 
-```@example test
-#| echo: false
-if !haskey(ENV, "RASTERDATASOURCES_PATH")
-    ENV["RASTERDATASOURCES_PATH"] = ".";
-end
-using CairoMakie
-CairoMakie.activate!(type = "png")
-```
-
 ## Environmental data
 We start by downloading environmental data. We use the [Rasters](www.github.com/rafaqz/Rasters.jl) package to handle raster data, and RasterDataSources.jl to automatically download Worldclim data.
 
