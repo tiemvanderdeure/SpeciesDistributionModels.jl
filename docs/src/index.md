@@ -1,14 +1,16 @@
-```@meta
-CurrentModule = SpeciesDistributionModels
+```@raw html
+---
+layout: home
+---
 ```
 
 # SpeciesDistributionModels
 
 Documentation for [SpeciesDistributionModels](https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl).
 
-```@index
-```
 
-```@autodocs
-Modules = [SpeciesDistributionModels]
-```
+## Installation
+
+````julia
+] add github.com/tiemvanderdeure/SpeciesDistributionModels.jl
+````

@@ -3,6 +3,7 @@ module SpeciesDistributionModels
 import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random, ThreadsX
 import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
 import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess, Distances
+import GeoInterface as GI
 
 using MLJBase: pdf
 using Rasters: Raster, RasterStack, Band
