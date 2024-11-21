@@ -35,8 +35,21 @@ export default defineConfig({
       }
     },
     nav: [
-      { text: 'Example', link: '/example' },
+      { text: 'Getting started', link: '/getting_started' },
+      { text: 'Examples', items:
+        [
+          text: 'Distribution of Eucalyptus regnans', link: '/eucalyptus_regnans' 
+        ]
+      },
       { text: 'API', link: '/api' },
+      { text: 'Ecosystem',
+        items: [
+          { text: 'Rasters.jl', link: 'https://rafaqz.github.io/Rasters.jl/dev/' },
+          { text: 'MLJ.jl', link: 'https://juliaai.github.io/MLJ.jl/dev/' },
+          { text: 'GBIF2.jl', link: 'https://rafaqz.github.io/GBIF2.jl/dev/' },
+          { text: 'HDF5.jl', link: 'https://juliaio.github.io/HDF5.jl/stable/'},
+         ]
+       },
     ],
     editLink: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
     socialLinks: [
