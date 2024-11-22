@@ -10,12 +10,7 @@ makedocs(;
         devurl = "dev",
         devbranch = "master",
     ),
-    warnonly = true,
-    pages = [
-        "Home" => "index.md",
-        "Getting started" => "example.md",
-        "API" => "api.md"
-        ]
+    warnonly = true
 )
 
 deploydocs(; 
