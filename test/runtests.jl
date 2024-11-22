@@ -3,6 +3,10 @@ import SpeciesDistributionModels as SDM
 using StableRNGs, Distributions, Test
 using Makie
 
+using MLJGLMInterface: LinearBinaryClassifier
+using EvoTrees: EvoTreeClassifier
+using MLJDecisionTreeInterface: RandomForestClassifier
+
 rng = StableRNG(0)
 #using Random; rng = Random.GLOBAL_RNG
 # some mock data
@@ -22,10 +26,10 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
     ## ensemble
     models = (
-        rf = SDM.random_forest(; rng),
-        rf2 = OneHotEncoder() |> SDM.random_forest(; max_depth = 3, rng),
-        lm = SDM.linear_model(),
-        brt = SDM.boosted_regression_tree(; rng)
+        rf = SDM.RandomForestClassifier(; rng),
+        rf2 = OneHotEncoder() |> SDM.RandomForestClassifier(; max_depth = 3, rng),
+        lm = SDM.LinearBinaryClassifier(),
+        brt = SDM.EvoTreeClassifier(; rng)
     )
 
     ensemble = sdm(data, models;
