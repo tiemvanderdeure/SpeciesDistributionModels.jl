@@ -26,10 +26,10 @@ presencedata = (a = rand(rng, n), b = rand(rng, n).^2, c = sqrt.(rand(rng, n)))
 
     ## ensemble
     models = (
-        rf = SDM.RandomForestClassifier(; rng),
-        rf2 = OneHotEncoder() |> SDM.RandomForestClassifier(; max_depth = 3, rng),
-        lm = SDM.LinearBinaryClassifier(),
-        brt = SDM.EvoTreeClassifier(; rng)
+        rf = RandomForestClassifier(; rng),
+        rf2 = OneHotEncoder() |> RandomForestClassifier(; max_depth = 3, rng),
+        lm = LinearBinaryClassifier(),
+        brt = EvoTreeClassifier(; rng)
     )
 
     ensemble = sdm(data, models;
