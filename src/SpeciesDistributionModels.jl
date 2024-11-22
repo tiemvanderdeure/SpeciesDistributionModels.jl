@@ -1,17 +1,17 @@
 module SpeciesDistributionModels
 
 import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random, ThreadsX
-import MLJBase, StatisticalMeasures, StatisticalMeasuresBase, ScientificTypesBase, CategoricalArrays
-import GLM, PrettyTables, Rasters, EvoTrees, DecisionTree, Shapley, Loess, Distances
+import MLJBase, StatisticalMeasures, CategoricalArrays
+import GLM, PrettyTables, Rasters, Shapley, Loess, Distances
 import GeoInterface as GI
 
 using MLJBase: pdf
-using Rasters: Raster, RasterStack, Band
+using Rasters: Raster, RasterStack, Band, DD
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
 
+using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase, ScientificTypesBase
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
-using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy
 import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic
 
 export SDMensemble, predict, sdm, sdmdata, select, machines, machine_keys,
@@ -25,7 +25,6 @@ export auc, kappa, sensitivity, selectivity, accuracy,
     Continuous, OrderedFactor, Multiclass, Count,
     StratifiedCV, CV, Holdout, ResamplingStrategy
 #include("learningnetwork.jl")
-include("models.jl")
 include("data_utils.jl")
 include("resample.jl")
 # export stubs for extensions
