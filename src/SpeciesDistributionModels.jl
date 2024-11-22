@@ -7,10 +7,8 @@ import GeoInterface as GI
 
 using MLJBase: pdf
 using Rasters: Raster, RasterStack, Band, DD
-using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
-
-using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase, ScientificTypesBase
+using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic
 
