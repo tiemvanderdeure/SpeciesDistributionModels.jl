@@ -28,7 +28,6 @@ include("resample.jl")
 export interactive_response_curves, interactive_evaluation
 
 include("collinearity.jl")
-include("models.jl")
 include("ensemble.jl")
 include("predict.jl")
 include("explain/explain.jl")
