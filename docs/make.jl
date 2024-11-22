@@ -8,7 +8,7 @@ makedocs(;
     format=DocumenterVitepress.MarkdownVitepress(
         repo = "github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
         devurl = "dev",
-        devbranch = "master",
+        devbranch = "main",
     ),
     warnonly = true
 )
@@ -17,6 +17,6 @@ deploydocs(;
     repo="github.com/tiemvanderdeure/SpeciesDistributionModels.jl",
     target = "build", # this is where Vitepress stores its output
     branch = "gh-pages",
-    devbranch = "master",
+    devbranch = "main",
     push_preview = true
 )
