@@ -1,227 +1,139 @@
-# Machines have 1 machine, plus metadata
-struct SDMmachine{M<:MLJBase.Probabilistic} 
+const ENSEMBLEKEYS = (:machine, :model, :trainrows, :testrows)
+const ENSEMBLETYPES = Tuple{<:Machine, <:MLJBase.Probabilistic, <:AbstractVector{<:Integer}, <:AbstractVector{<:Integer}}
+const SDMMACHINETUPLETYPE = NamedTuple{ENSEMBLEKEYS, <:ENSEMBLETYPES}
+const SDMENSEMBLESTACKTYPE{N} = NamedTuple{
+    ENSEMBLEKEYS,
+    <:Tuple{Array{<:Machine, N}, Vector{<:MLJBase.Probabilistic}, Vector{<:Vector{<:Integer}}, Vector{<:Vector{<:Integer}}}
+}
+
+struct SDMmachine
     machine::Machine
-    data::SDMdata
+    model::Symbol
     fold::Int
-
-    SDMmachine(m::Machine{M}, data, fold) where M = new{M}(m, data, fold)
+    data::SDMdata
 end
 
-# Groups have multiple machines with identical model and resampler
-struct SDMgroup <: AbstractVector{SDMmachine}
-    sdm_machines::Vector{SDMmachine}
-    model
-    model_key
-end
+struct SDMensemble{N, D} <: DD.AbstractBasicDimArray{SDMmachine, N, D}
+    machines::DD.DimArray{<:Machine, N, D}
+    data::SDMdata
 
-# Ensembles have multiple groups with potentially different models and different resamplers, but identical data
-struct SDMensemble{K}
-    groups::NamedTuple{K, <:Tuple{Vararg{SDMgroup}}} # Contains the trained models
-
-    SDMensemble(groups::NamedTuple{K}) where K = new{K}(groups)
-end
-
-function Base.getproperty(ensemble::SDMensemble{K}, s::Symbol) where K
-    if s in K
-        getfield(ensemble.groups, s)
-    else
-        getfield(ensemble, s)
+    function SDMensemble(machines::DD.DimArray{<:Machine, N, D}, data) where {N, D}
+        new{N, D}(machines, data)
     end
 end
 
+SDMmachineOrEnsemble = Union{SDMmachine, SDMensemble}
 
-SDMgroupOrEnsemble = Union{SDMgroup, SDMensemble}
+# easy access to the fields of the type
+sdmdata(s::SDMmachineOrEnsemble) = s.data
+machines(s::SDMensemble) = s.machines
 
-# args field stores exactly the data as it is given to the machine
-data(mach::SDMmachine) = mach.data
-data(s::SDMgroupOrEnsemble) = data(s[1])
-model(g::SDMgroup) = g.model
-models(e::SDMensemble) = map(g -> g.model, groups(e))
-modelkeys(e::SDMensemble{K}) where K = K
+models(m::SDMmachine)::MLJBase.Probabilistic = m.machine.model
+models(ensemble::SDMensemble{2}) = models(ensemble[fold = 1])
+models(ensemble::SDMensemble{1, <:Tuple{<:Dim{:fold}}}) = DimArray([model(first(ensemble))], DD.refdims(ensemble, :model))
+models(ensemble::SDMensemble{1, <:Tuple{<:Dim{:model}}}) = model.(ensemble)
 
-Base.iterate(ensemble::SDMensemble) = Base.iterate(ensemble.groups)
-Base.iterate(ensemble::SDMensemble, i) = Base.iterate(ensemble.groups, i)
-Base.getindex(ensemble::SDMensemble, i) = ensemble.groups[i]
-Base.getindex(group::SDMgroup, i) = group.sdm_machines[i]
-Base.length(ensemble::SDMensemble) = Base.length(ensemble.groups)
-Base.size(group::SDMgroup) = size(group.sdm_machines)
-n_machines(ensemble::SDMensemble) = mapreduce(group -> length(group.sdm_machines), +, ensemble)
-
-groups(ensemble::SDMensemble) = ensemble.groups
-machines(group::SDMgroup) = map(m -> m.machine, group)
-sdm_machines(group::SDMgroup) = group.sdm_machines
-
-# machine_key generates a unique key for a machine
-machine_keys(group::SDMgroup) = [Symbol("$(group.model_key)_fold$(m.fold)") for m in group]
-
-# A bunch of functions are applied to an ensemble by applying to each group and reducing with vcat
-for f in (:machines, :machine_keys, :sdm_machines)
-    @eval ($f)(ensemble::SDMensemble) = mapreduce(group -> ($f)(group), vcat, ensemble)
+"""
+    model(s)
+    Similar to `models(s)`, but returns a model object rather than 1-length Array, whenever appropriate.
+"""
+function model(s::SDMmachineOrEnsemble)
+    m = models(s)
+    m isa DimArray && length(m) == 1 ? first(m) : m
 end
 
-model_keys(ensemble) = keys(ensemble.groups)
+# for easier exploration
+Base.propertynames(::SDMmachineOrEnsemble) = (ENSEMBLEKEYS..., :data)
 
-test_rows(mach::SDMmachine) = _gettestrows(data(mach), mach.fold)
-train_rows(mach::SDMmachine) = _gettrainrows(data(mach), mach.fold)
-
-## Select methods
-# Function to convienently select some models from groups or ensembles
-function select(group::SDMgroup, machine_indices::AbstractVector{<:Integer})
-    if length(machine_indices) == 0
-        return nothing
-    else 
-        return SDMgroup(
-            group.sdm_machines[machine_indices],
-            group.model,
-            group.model_key,
-        )
-    end
-end
-
-function select(ensemble::SDMensemble, group_indices::AbstractVector{<:Integer})
-    if length(group_indices) == 0
-        return nothing
-    else 
-        return SDMensemble(
-            ensemble.groups[group_indices],
-        )
-    end
-end
-
-function select(ensemble::SDMensemble; machines)
-    if length(machines) == 0
-        return nothing
-    else 
-        Statistics.maximum(machines) <= n_machines(ensemble) || throw(BoundsError(ensemble, machines))
-
-        j = 0
-        groups = SDMgroup[]
-        groups = map(ensemble) do group
-            i = j
-            j = i + length(group)
-            select(group, filter(x -> x > i && x <= j, machines) .- i)
+# iterating though an ensemble returns machines
+function _getindex(ensemble::SDMensemble, I...; kw...)
+    obj = Base.getindex(machines(ensemble), I...; kw...)
+    if obj isa DD.AbstractDimArray
+        SDMensemble(obj, sdmdata(ensemble))
+    elseif obj isa Machine
+        # TODO: This would be much easier if refdims would be a Table column
+        refdims = DD.refdims(ensemble)
+        if isempty(refdims)
+            model, fold = getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...)
+        elseif refdims isa Tuple{Dim{:fold}}
+            model = first(getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...))
+            fold = first(DD.lookup(DD.dims(refdims, :fold)))
+        elseif refdims isa Tuple{Dim{:model}}
+            fold = first(getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...))
+            model = first(DD.lookup(DD.dims(refdims, :model)))
         end
 
-        return SDMensemble(
-            filter(!Base.isnothing, groups),
-        )
+        SDMmachine(obj, model, fold, sdmdata(ensemble))
     end
 end
+# To disambiguate
+Base.getindex(e::SDMensemble, I...; kw...) = _getindex(e, I...; kw...)
+Base.getindex(e::SDMensemble, d1::DD.DimensionalIndices; kw...) = _getindex(e, d1; kw...)
+Base.getindex(e::SDMensemble, d1::DD.DimIndices; kw...) = _getindex(e, d1; kw...)
+Base.getindex(e::SDMensemble, d1::DD.DimensionalIndices, d2::DD.DimensionalIndices, D::DD.DimensionalIndices...; kw...) = _getindex(e, d1,d2, D...; kw...)
+
+# indexing by symbol returns the modelDimIndices
+Base.getindex(ensemble::SDMensemble, s::Symbol) = ensemble[model = DD.At(s)]
+# to solve ambiguity
+
+# Define dims.
+DD.dims(e::SDMensemble, args...) = DD.dims(machines(e), args...)
+DD.refdims(e::SDMensemble, args...) = DD.refdims(machines(e), args...)
 
 ## Show methods
-function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble{K}) where K
-    d = ensemble[1][1].data#data(ensemble)
-    
-    println(io, "trained SDMensemble, containing $(n_machines(ensemble)) SDMmachines across $(Base.length(ensemble)) SDMgroups \n")
-
+function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
+    println(io, "Trained SDMensemble")
+    nfolds = DD.hasdim(ensemble, :fold) ? length(DD.dims(ensemble, Dim{:fold})) : 1
+    println(io, "Contains $(length(ensemble)) SDMmachines across $nfolds resampling folds\n")
     println(io, "Uses the following models:")   
-    for k in K
-        modeltype = MLJBase.name(model(ensemble[k]))
-        printstyled(io, k, color = :blue)
-        print(io, " => $modeltype. \n")
-    end
-end
-
-
-#=
-    data = ensemble[1][1].data#data(ensemble)
-    responsedata = response(data)
-
-    n_presence = sum(responsedata .== true)
-    n_absence = sum(length(responsedata) - n_presence)
-
-    sc = MLJBase.schema(predictor(data))
-    sci = sc.scitypes
-    nam = sc.names
-
-    println(io, "Occurence data: Presence-Absence with $n_presence presences and $n_absence absences")
-    println(io, "Predictors: $(join(["$key ($scitype)" for (key, scitype) in zip(nam, sci)], ", "))")
-
-    resampler_names = MLJBase.name.(getfield.(ensemble.groups, :resampler))
-    n_models = Base.length.(ensemble.groups)
-    table_cols = hcat(K, resampler_names, n_models)
-    header = (["model", "resampler", "machines"])
-    PrettyTables.pretty_table(io, table_cols; header = header)
-    =#
-
-
-function Base.show(io::IO, mime::MIME"text/plain", group::SDMgroup)
-    println(io, "trained SDMgroup, containing $(length(group.sdm_machines)) SDMmachines")
-    println(io, "name: $(group.model_key)")
-    println(io, "model type: $(MLJBase.name(group.model))")
+    DD.print_array(io, mime, models(ensemble))
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", mach::SDMmachine)
-    println(io, "trained SDMmachine")
-    println(io, "fold number: $(mach.fold)")
-    println(io, "model type: $(MLJBase.name(mach.machine.model))")
+    println(io, "Trained SDMmachine\n")
+    println(io, "Uses model type:")
+    Base.show(io, mime, mach.machine.model)
 end
 
-## Table interface !! Is this still valid?
+## Table interface
 Tables.istable(::Type{SDMensemble}) = true
-Tables.schema(ensemble::SDMensemble) = Tables.schema(ensemble.groups[1])
-Tables.rows(ensemble::SDMensemble) = Tables.rows(ensemble.groups)
-Tables.columns(ensemble::SDMensemble) = Tables.columns(ensemble.groups)
-
-# Turns models into a NamedTuple with unique keys
-function _givenames(models::Vector)
-    names = map(models) do model
-        Base.replace(MLJBase.name(model), "Classifier"=>"", "Binary"=>"")
-    end
-    for (name, n) in StatsBase.countmap(names)
-        if n > 1
-            names[names .== name] = name .* "_" .* string.(1:n)
-        end
-    end
-    return NamedTuple{Tuple(Symbol.(names))}(models)
-end
-
-function _fit_sdm_model(data::SDMdata, model::Probabilistic, fold, train, test, verbosity, cache, scitype_check_level)
-    scitype_check_level = scitype_check_level * fold == 1
-    mach = MLJBase.machine(model, predictor(data), data.response; cache, scitype_check_level)
-    MLJBase.fit!(mach; rows = train, verbosity)
-    return SDMmachine(mach, data, fold)
-end
-
-function _fit_sdm_group(
-    data,
-    model, 
-    model_key,
-    verbosity,
-    cache,
-    scitype_check_level,
-    cpu_backend
-    )
-
-    machines = _map(cpu_backend)(enumerate(traintestpairs(data))) do (f, (train, test))
-        _fit_sdm_model(data, model, f, train, test, verbosity, cache, scitype_check_level)
-    end
-
-    return SDMgroup(machines, model, model_key)
-
-end
+Tables.schema(ensemble::SDMensemble) = Tables.schema(info(ensemble))
+Tables.rows(ensemble::SDMensemble) = Tables.rows(info(ensemble))
+Tables.columns(ensemble::SDMensemble) = Tables.columns(info(ensemble))
 
 function _sdm(
     data::SDMdata,
-    models::NamedTuple{K}, 
+    models::NamedTuple, 
     verbosity::Int,
     cache, 
     scitype_check_level,
     threaded::Bool
-) where K
-    backend = cpu_backend(threaded)
-    sdm_groups = _map(backend)(keys(models)) do model_key
-        model = models[model_key]
-        _fit_sdm_group(
-            data,
-            model, 
-            model_key,
-            verbosity,
-            cache,
-            scitype_check_level,
-            backend
-        )
-    end |> NamedTuple{keys(models)}
+)
+    ensemble = _initialize_ensemble(data, models, cache, scitype_check_level)
+    _fit!(ensemble, threaded; verbosity)
+end
 
-    return SDMensemble(sdm_groups)
+function _initialize_ensemble(data, models::NamedTuple, cache, scitype_check_level)
+    # set up dimensions
+    modeldim = Dim{:model}(collect(keys(models)))
+    folddim = Dim{:fold}(1:length(data.traintestpairs))
+    dims = (modeldim, folddim)
+
+    # initialize the models
+    machines = broadcast(DD.DimPoints(dims)) do (model, fold)
+        MLJBase.machine(models[model], data.predictor, data.response; cache, scitype_check_level = scitype_check_level * (fold == 1))
+    end |> DimArray{Machine}
+    
+    return SDMensemble(machines, data)    
+end
+
+function _fit!(e::SDMensemble, threaded::Bool; verbosity)
+    @maybe_threads threaded for mach in e
+        _fit!(mach; verbosity)
+    end
+    return e
+end
+function _fit!(m::SDMmachine; kw...)
+    MLJBase.fit!(m.machine; rows = m.data.traintestpairs[m.fold][1], kw...)
+    return m
 end

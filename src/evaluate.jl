@@ -1,29 +1,104 @@
-struct SDMmachineEvaluation
-    sdm_machine::SDMmachine
-    measures::NamedTuple
-    results::NamedTuple
+struct SDMevaluation
+    score::AbstractFloat
+    threshold::Union{Missing, <:AbstractFloat}
+    machine::SDMmachine
 end
 
-struct SDMgroupEvaluation <: AbstractVector{SDMmachineEvaluation}
-    machine_evaluations::Vector{SDMmachineEvaluation}
-    group::SDMgroup
-end
-
-struct SDMensembleEvaluation <: AbstractVector{SDMgroupEvaluation}
-    group_evaluations::Vector{SDMgroupEvaluation}
+struct SDMensembleEvaluation{N, D} <: DD.AbstractBasicDimArray{SDMevaluation, N, D}
+    stack::DimStack{(:scores, :thresholds)}
     ensemble::SDMensemble
-    results
 end
 
-ScoreType = NamedTuple{(:score, :threshold), Tuple{Float64, Union{Missing, Float64}}}
+SDMensembleEvaluation(stack::DimStack{(:scores, :thresholds), <:Any, N, <:Any, D}, ensemble::SDMensemble) where {N, D} = 
+    SDMensembleEvaluation{N,D}(stack, ensemble)
 
-SDMevaluation = Union{SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation}
-SDMgroupOrEnsembleEvaluation = Union{SDMgroupEvaluation, SDMensembleEvaluation}
+function Base.show(io::IO, mime::MIME"text/plain", ev::SDMensembleEvaluation)
+    meanscores = Statistics.mean(ev.stack.scores, dims = :fold)[fold = 1]
+    _, displaywidth = displaysize(io)
+    blockwidth = displaywidth
+    io = IOContext(io, :dim_brackets => false)
+    println(io, "SDMensembleEvaluation with dimensions:")
+    DD.Dimensions.show_dims(io, mime, DD.dims(ev))
+    #DD.print_dims_block(io, mime, DD.dims(ev); displaywidth, blockwidth)
+    println(io, "\n\nMean training performance:")
+    DD.print_array(io, mime, meanscores[dataset = DD.At(:train)])
+    println(io, "\n\nMean test performance:")
+    DD.print_array(io, mime, meanscores[dataset = DD.At(:test)])
+end
 
+DD.dims(ev::SDMensembleEvaluation) = DD.dims(ev.stack)
+
+#=
 # Basic operations on evaluate objects
-Base.getindex(ensemble::SDMensembleEvaluation, i) = ensemble.group_evaluations[i]
-Base.getindex(group::SDMgroupEvaluation, i) = group.machine_evaluations[i]
+# iterating though an ensemble returns machines
+function Base.getindex(ensemble::SDMensemble, I...; kw...)
+    obj = Base.getindex(machines(ensemble), I...; kw...)
+    if obj isa DD.AbstractDimArray
+        SDMensemble(obj, data(ensemble))
+    elseif obj isa Machine
+        # TODO: This would be much easier if refdims would be a Table column
+        refdims = DD.refdims(ensemble)
+        if isempty(refdims)
+            model, fold = getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...)
+        elseif refdims isa Tuple{Dim{:fold}}
+            model = first(getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...))
+            fold = first(DD.lookup(DD.dims(refdims, :fold)))
+        elseif refdims isa Tuple{Dim{:model}}
+            fold = first(getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...))
+            model = first(DD.lookup(DD.dims(refdims, :model)))
+        end
 
+        SDMmachine(obj, model, fold, sdmdata(ensemble))
+    end
+end
+# indexing by symbol returns the model
+Base.getindex(ensemble::SDMensemble, s::Symbol) = ensemble[model = DD.At(s)]
+=#
+function _evaluate(ensemble::SDMensemble, measures::NamedTuple)
+    data = sdmdata(ensemble)
+    measuredim = Dim{:measure}(collect(keys(measures)))
+    alldims = (
+        DD.dims(ensemble)..., 
+        DD.refdims(ensemble)..., 
+        Dim{:dataset}([:train, :test]), 
+        measuredim
+    ) |> DD.format
+    datasets = broadcast(DD.DimPoints(DD.dims(alldims, (:dataset, :fold)))) do (t, f)
+        map(p -> p[getrows(data, t, f)], data.predictor)
+    end
+    y = broadcast(DD.DimPoints(DD.dims(alldims, (:dataset, :fold)))) do (t, f)
+        data.response[getrows(data, t, f)]
+    end
+    predictions = DimArray{MLJBase.UnivariateFiniteVector}(undef, DD.dims(alldims, (:fold, :model, :dataset)))
+    DD.broadcast_dims!(predictions, ensemble.machines, datasets) do m, d
+        MLJBase.predict(m, d)
+    end
+    
+    # evaluate - on DD 0.29 this should be a lot easier
+    evaluationstack = DimStack((scores = zeros(alldims), thresholds = DD.DimArray{Union{Missing, Float64}}(undef, alldims)))
+    for I in DD.DimIndices(alldims)
+        evaluationstack[I] = _apply_measure(
+            predictions[DD.commondims(I, DD.dims(predictions))], 
+            y[DD.commondims(I, DD.dims(y))], 
+            measures[DD.dims(I, :measure).val]
+        )
+    end
+    return SDMensembleEvaluation(evaluationstack, ensemble)
+end
+
+function getrows(data::SDMdata, set::Symbol, fold)
+    if set == :train
+        data.traintestpairs[fold][1]
+    elseif set == :test
+        data.traintestpairs[fold][2]
+    end
+end
+
+function _apply_measure(y_hat::MLJBase.UnivariateFiniteVector, y::MLJBase.CategoricalVector, measure)
+    measure(y_hat, y)
+end
+
+#=
 Base.size(ensemble::SDMensembleEvaluation) = Base.size(ensemble.group_evaluations)
 Base.size(group::SDMgroupEvaluation) = Base.size(group.machine_evaluations)
 
@@ -273,3 +348,4 @@ function _evaluate(ensemble::SDMensemble, measures, train, test, validation, red
         ensemble_evaluation
     )
 end
+=#
