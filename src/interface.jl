@@ -110,7 +110,7 @@ function evaluate( # Define this as an extension of MLJBase.evaluate??
         validation = (X, boolean_categorical(y))
     end
 
-    _evaluate(x, measures, train, test, validation)
+    _evaluate(x, measures, train, test)
 end
 
 

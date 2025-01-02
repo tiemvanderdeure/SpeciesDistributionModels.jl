@@ -26,76 +26,130 @@ function Base.show(io::IO, mime::MIME"text/plain", ev::SDMensembleEvaluation)
     DD.print_array(io, mime, meanscores[dataset = DD.At(:test)])
 end
 
-DD.dims(ev::SDMensembleEvaluation) = DD.dims(ev.stack)
+# TODO: show method for a single SDMevaluation
 
-#=
 # Basic operations on evaluate objects
-# iterating though an ensemble returns machines
-function Base.getindex(ensemble::SDMensemble, I...; kw...)
-    obj = Base.getindex(machines(ensemble), I...; kw...)
+DD.dims(ev::SDMensembleEvaluation) = DD.dims(ev.stack)
+ensemble(ev::SDMensembleEvaluation) = getfield(ev, :ensemble)
+scores(ev::SDMensembleEvaluation) = ev.stack.scores
+thresholds(ev::SDMensembleEvaluation) = ev.stack.thresholds
+
+# TODO: disambiguate this
+function Base.getindex(ev::SDMensembleEvaluation, I...; kw...)
+    obj = Base.getindex(ev.stack, I...; kw...)
     if obj isa DD.AbstractDimArray
-        SDMensemble(obj, data(ensemble))
-    elseif obj isa Machine
-        # TODO: This would be much easier if refdims would be a Table column
-        refdims = DD.refdims(ensemble)
-        if isempty(refdims)
-            model, fold = getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...)
-        elseif refdims isa Tuple{Dim{:fold}}
-            model = first(getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...))
-            fold = first(DD.lookup(DD.dims(refdims, :fold)))
-        elseif refdims isa Tuple{Dim{:model}}
-            fold = first(getindex(DD.DimPoints(DD.dims(ensemble)), I...; kw...))
-            model = first(DD.lookup(DD.dims(refdims, :model)))
-        end
-
-        SDMmachine(obj, model, fold, sdmdata(ensemble))
+        SDMensembleEvaluation(obj, getindex(ensemble(ev), I...; kw...))
+    elseif obj isa NamedTuple
+        SDMevaluation(obj.scores, obj.thresholds, getindex(ensemble(ev), I...; kw...))
     end
 end
-# indexing by symbol returns the model
-Base.getindex(ensemble::SDMensemble, s::Symbol) = ensemble[model = DD.At(s)]
-=#
-function _evaluate(ensemble::SDMensemble, measures::NamedTuple)
-    data = sdmdata(ensemble)
-    measuredim = Dim{:measure}(collect(keys(measures)))
-    alldims = (
-        DD.dims(ensemble)..., 
-        DD.refdims(ensemble)..., 
-        Dim{:dataset}([:train, :test]), 
-        measuredim
-    ) |> DD.format
-    datasets = broadcast(DD.DimPoints(DD.dims(alldims, (:dataset, :fold)))) do (t, f)
-        map(p -> p[getrows(data, t, f)], data.predictor)
-    end
-    y = broadcast(DD.DimPoints(DD.dims(alldims, (:dataset, :fold)))) do (t, f)
-        data.response[getrows(data, t, f)]
-    end
-    predictions = DimArray{MLJBase.UnivariateFiniteVector}(undef, DD.dims(alldims, (:fold, :model, :dataset)))
-    DD.broadcast_dims!(predictions, ensemble.machines, datasets) do m, d
-        MLJBase.predict(m, d)
-    end
-    
-    # evaluate - on DD 0.29 this should be a lot easier
-    evaluationstack = DimStack((scores = zeros(alldims), thresholds = DD.DimArray{Union{Missing, Float64}}(undef, alldims)))
-    for I in DD.DimIndices(alldims)
-        evaluationstack[I] = _apply_measure(
-            predictions[DD.commondims(I, DD.dims(predictions))], 
-            y[DD.commondims(I, DD.dims(y))], 
-            measures[DD.dims(I, :measure).val]
-        )
-    end
-    return SDMensembleEvaluation(evaluationstack, ensemble)
-end
 
-function getrows(data::SDMdata, set::Symbol, fold)
+
+## TODO: make this much smoother and more understandable code
+function _getrows(data::SDMdata, set::Symbol, fold)
     if set == :train
         data.traintestpairs[fold][1]
     elseif set == :test
         data.traintestpairs[fold][2]
     end
 end
+function _getrows(ds::Tuple{Dim{:dataset}, Dim{:fold}}, ensemble::SDMensemble)
+    data = sdmdata(ensemble)
+    rows = broadcast(DD.DimPoints(ds)) do (t, f)
+        _getrows(data, t, f)
+    end
+end
+function _getrows(ds::Tuple{Dim{:dataset}}, ensemble::SDMensemble)
+    data = sdmdata(ensemble)
+    f = first(folds(ensemble))
+    rows = broadcast(DD.DimPoints(ds)) do (t,)
+        _getrows(data, t, f)
+    end
+end
 
-function _apply_measure(y_hat::MLJBase.UnivariateFiniteVector, y::MLJBase.CategoricalVector, measure)
-    measure(y_hat, y)
+function _get_datasets(ds::Tuple{Dim{:dataset}, Dim{:fold}}, ensemble::SDMensemble)
+    rows = _getrows(ds, ensemble)
+    broadcast(rows) do r
+        map(p -> p[r], sdmdata(ensemble).predictor)
+    end
+end
+
+function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, test::Bool)
+    data = sdmdata(ensemble)
+    measuredim = Dim{:measure}(collect(keys(measures)))
+    dataset_dim = Symbol[]
+    train && push!(dataset_dim, :train)
+    test && push!(dataset_dim, :test)
+    dataset_dim = Dim{:dataset}(dataset_dim)
+
+    alldims = (
+        DD.dims(ensemble)..., 
+        dataset_dim, 
+        measuredim
+    ) |> DD.format
+
+    # get a DimArray with row indices for each dataset and fold (if applicable)
+    rows = _getrows(DD.dims(alldims, (:dataset, :fold)), ensemble)
+    x = broadcast(rows) do r
+        map(p -> p[r], data.predictor)
+    end
+    y = getindex.(Ref(data.response), rows)
+
+    predictions = DimArray{MLJBase.UnivariateFiniteVector}(undef, DD.dims(alldims, (:fold, :model, :dataset)))
+    DD.broadcast_dims!(predictions, ensemble.machines, x) do m, x
+        MLJBase.predict(m, x)
+    end
+
+    # if any are literal targets (threshold-dependent), compute the confusion matrices outside the loop
+    anyliteral = any(map(m -> StatisticalMeasuresBase.kind_of_proxy(m) isa StatisticalMeasures.LearnAPI.LiteralTarget, measures))
+    thresholds_confmats = broadcast_dims(predictions, y) do p, y
+        if anyliteral
+            scores = pdf.(p, true)
+            thresholds = unique(scores)
+            (thresholds, _conf_mats_from_thresholds(scores, y, thresholds))
+        else
+            (nothing, nothing)
+        end
+    end
+
+    # pre-allocate the evaluation stack - its layers are `scores` and `thresholds`
+    evaluationstack = DimStack((scores = zeros(alldims), thresholds = DD.DimArray{Union{Missing, Float64}}(undef, alldims)))
+    # evaluate - replace with a broadcast_dims! in the future?
+    for I in DD.DimIndices(alldims)
+        evaluationstack[I] = _apply_measure(
+            predictions[DD.commondims(I, DD.dims(predictions))], 
+            y[DD.commondims(I, DD.dims(y))], 
+            thresholds_confmats[DD.commondims(I, DD.dims(thresholds_confmats))],
+            measures[DD.dims(I, :measure).val]
+        )
+    end
+    return SDMensembleEvaluation(evaluationstack, ensemble)
+end
+
+function _apply_measure(y_hat::MLJBase.UnivariateFiniteVector, y::MLJBase.CategoricalVector, (thresholds, conf_mats), measure)
+    if StatisticalMeasuresBase.kind_of_proxy(measure) isa StatisticalMeasures.LearnAPI.LiteralTarget
+        # in this case the measure is threshold-dependent and we use the precomputed confusion matrices
+        score, idx = findmax(measure, conf_mats)
+        # return the maximum score and corresponding threshold
+        return (score, thresholds[idx])
+    else
+        # in this case the measure is threshold-independent and we just compute the score
+        # and return 'missing' for the threshold
+        return (measure(y_hat, y), missing)
+    end
+end
+
+## hacky way of computing confusion matrices that is much faster
+function _conf_mats_from_thresholds(scores, y, thresholds)
+    levels = [false, true]
+    # use the internal method to avoid constructing indexer every time
+    indexer = StatisticalMeasures.LittleDict(levels[i] => i for i in eachindex(levels)) |> StatisticalMeasures.freeze
+    # preallocate y_
+    y_ = boolean_categorical(falses(size(scores)...)) 
+    broadcast(thresholds) do t
+        broadcast!(>=(t), y_, scores) 
+        StatisticalMeasures.ConfusionMatrices._confmat(y_, y, indexer, levels, true)
+    end    
 end
 
 #=
