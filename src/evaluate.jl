@@ -96,7 +96,7 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
     y = getindex.(Ref(data.response), rows)
 
     predictions = DimArray{MLJBase.UnivariateFiniteVector}(undef, DD.dims(alldims, (:fold, :model, :dataset)))
-    DD.broadcast_dims!(predictions, ensemble.machines, x) do m, x
+    DD.broadcast_dims!(predictions, machines(ensemble), x) do m, x
         MLJBase.predict(m, x)
     end
 

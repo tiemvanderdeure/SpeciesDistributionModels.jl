@@ -13,38 +13,57 @@ struct SDMmachine
     data::SDMdata
 end
 
-struct SDMensemble{N, D} <: DD.AbstractBasicDimArray{SDMmachine, N, D}
-    machines::DD.DimArray{<:Machine, N, D}
-    data::SDMdata
-
-    function SDMensemble(machines::DD.DimArray{<:Machine, N, D}, data) where {N, D}
-        new{N, D}(machines, data)
-    end
+struct SDMensemble{N,D,R,A} <: DD.AbstractDimArray{SDMmachine,N,D,A}
+    parent::DD.DimArray{SDMmachine,N,D,R,A}
 end
+function SDMensemble(
+    machines::DD.DimArray{<:Machine,N,D,R}, data
+) where {N,D<:Tuple,R<:Tuple}
+    sdmmachines = broadcast(machines, DD.DimPoints(DD.dims(machines))) do machine, (model, fold)
+        SDMmachine(machine, model, fold, data)
+    end
+    SDMensemble(sdmmachines)
+end
+SDMensemble(sdmmachines::DimArray{SDMmachine,N,D,R,A}) where {N,D<:Tuple,R<:Tuple,A} =
+    SDMensemble{N,D,R,A}(sdmmachines)
 
 SDMmachineOrEnsemble = Union{SDMmachine, SDMensemble}
 
+# implement the dimarray interface
+DD.parent(ensemble::SDMensemble) = ensemble.parent
+DD.dims(e::SDMensemble, args...) = DD.dims(parent(e), args...)
+DD.refdims(e::SDMensemble, args...) = DD.refdims(parent(e), args...)
+DD.name(e::SDMensemble, args...) = DD.name(parent(e), args...)
+DD.metadata(e::SDMensemble, args...) = DD.metadata(parent(e), args...)
+DD.rebuild(e::SDMensemble, data::DimArray{SDMmachine}, dims, refdims, name, metadata) = 
+    SDMensemble(DD.rebuild(parent(e), data, dims, refdims, name, metadata))
+DD.rebuild(e::SDMensemble, data, dims, refdims, name, metadata) = DD.rebuild(parent(e), data, dims, refdims, name, metadata)
+DD.rebuild(e::SDMensemble; kw...) = DD.rebuild(parent(e); kw...)
+
 # easy access to the fields of the type
-sdmdata(s::SDMmachineOrEnsemble) = s.data
-machines(s::SDMensemble) = s.machines
+sdmdata(s::SDMmachine) = s.data
+sdmdata(s::SDMensemble) = sdmdata(first(s))
+machines(s::SDMensemble) = getfield.(s, :machine)
 
-models(m::SDMmachine)::MLJBase.Probabilistic = m.machine.model
-models(ensemble::SDMensemble{2}) = models(ensemble[fold = 1])
-models(ensemble::SDMensemble{1, <:Tuple{<:Dim{:fold}}}) = DimArray([model(first(ensemble))], DD.refdims(ensemble, :model))
-models(ensemble::SDMensemble{1, <:Tuple{<:Dim{:model}}}) = model.(ensemble)
-
-"""
-    model(s)
-    Similar to `models(s)`, but returns a model object rather than 1-length Array, whenever appropriate.
-"""
-function model(s::SDMmachineOrEnsemble)
-    m = models(s)
-    m isa DimArray && length(m) == 1 ? first(m) : m
+#models(m::SDMmachine) = model(m)
+model(m::SDMmachine)::MLJBase.Probabilistic = m.machine.model
+function models(ensemble::SDMensemble)
+    if DD.hasdim(ensemble, :fold)
+        models(view(ensemble, fold = 1))
+    elseif DD.hasdim(ensemble, :model) 
+        model.(ensemble)
+    else
+        DimArray([model(first(ensemble))], DD.refdims(ensemble, :model))
+    end
 end
+#models(ensemble::SDMensemble{2}) = models(ensemble[fold = 1])
+#models(ensemble::SDMensemble{1, <:Tuple{<:Dim{:fold}}}) = DimArray([model(first(ensemble))], DD.refdims(ensemble, :model))
+#models(ensemble::SDMensemble{1, <:Tuple{<:Dim{:model}}}) = models.(ensemble)
 
-# for easier exploration
-Base.propertynames(::SDMmachineOrEnsemble) = (ENSEMBLEKEYS..., :data)
+folds(m::SDMmachine) = m.fold
+folds(ensemble::SDMensemble) = DD.hasdim(ensemble, :fold) ? DD.dims(ensemble, :fold) : DD.refdims(ensemble, :fold)
 
+#=
 # iterating though an ensemble returns machines
 function _getindex(ensemble::SDMensemble, I...; kw...)
     obj = Base.getindex(machines(ensemble), I...; kw...)
@@ -75,18 +94,19 @@ Base.getindex(e::SDMensemble, d1::DD.DimensionalIndices, d2::DD.DimensionalIndic
 # indexing by symbol returns the modelDimIndices
 Base.getindex(ensemble::SDMensemble, s::Symbol) = ensemble[model = DD.At(s)]
 # to solve ambiguity
-
-# Define dims.
-DD.dims(e::SDMensemble, args...) = DD.dims(machines(e), args...)
-DD.refdims(e::SDMensemble, args...) = DD.refdims(machines(e), args...)
+=#
 
 ## Show methods
+# simpler type printing because the eltype is always SDMmachine
+DD.print_type(io::IO, A::SDMensemble) = print(io, "SDMensemble")
+
 function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
-    println(io, "Trained SDMensemble")
-    nfolds = DD.hasdim(ensemble, :fold) ? length(DD.dims(ensemble, Dim{:fold})) : 1
-    println(io, "Contains $(length(ensemble)) SDMmachines across $nfolds resampling folds\n")
-    println(io, "Uses the following models:")   
-    DD.print_array(io, mime, models(ensemble))
+    lines, blockwidth = DD.show_main(io, mime, ensemble)
+    # Printing the array data is optional, subtypes can
+    # show other things here instead.
+    ds = displaysize(io)
+    ctx = IOContext(io, :blockwidth => blockwidth, :displaysize => (ds[1] - lines, ds[2]))
+    DD.show_after(ctx, mime, models(ensemble))
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", mach::SDMmachine)
