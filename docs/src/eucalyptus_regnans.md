@@ -34,14 +34,12 @@ occurrences = thin(occurrences_raw.geometry, 5000)
 ## Background points
 Next, we sample random points to use as background points.
 
-From Rasters 0.12.1 on, this will be easier with Rasters.sample! 
-
 Let's plot both the occurrence and background points to see where _Eucalyptus regnans_ is found.
 
 ```@example test
-using StatsBase
-bg_indices = sample(findall(boolmask(bio_aus)), 500)
-bg_points = DimPoints(bio_aus)[bg_indices]
+using StatsBase # to active Rasters.sample
+bg_data = Rasters.sample(bio_aus, 500; skipmissing = true, geometry = (X,Y))
+bg_points = getproperty.(bg_data, :geometry)
 fig, ax, pl = plot(bio_aus.bio1)
 scatter!(ax, occurrences; color = :red)
 scatter!(ax, bg_points; color = :grey)
@@ -54,7 +52,6 @@ SpeciesDistributionModels.jl has a [sdmdata](@ref) function to handle input data
 ```@example test
 using SpeciesDistributionModels
 p_data = extract(bio_aus, occurrences; skipmissing = true)
-bg_data = bio_aus[bg_indices]
 data = sdmdata(p_data, bg_data; resampler = CV(nfolds = 3))
 ```
 
