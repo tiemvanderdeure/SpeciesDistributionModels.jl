@@ -4,6 +4,7 @@ import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Rand
 import MLJBase, StatisticalMeasures, CategoricalArrays
 import GLM, PrettyTables, Rasters, Shapley, Loess, Distances
 import GeoInterface as GI
+import ConstructionBase
 
 using Rasters: Raster, RasterStack, Band, DD
 using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses

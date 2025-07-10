@@ -90,7 +90,7 @@ A list of measurse is available here: https://juliaai.github.io/StatisticalMeasu
 - `train`: a `Bool` that indicates whether to evaluate on the training data. Defaults to `true`
 - `test`: a `Bool` that indicates whether to evaluate on the test data.Defaults to `true`
 - `validation`: optionally, provide a separate validation dataset. 
-Data should be provided as a `Tuple` with presences as the first field and absences as the second.
+Validation data should be a `Tuple` with presences as the first field and absences as the second.
 """
 function evaluate( # Define this as an extension of MLJBase.evaluate??
     x;
@@ -107,7 +107,7 @@ function evaluate( # Define this as an extension of MLJBase.evaluate??
     test || train || isempty(validation) || error("No data to test. Either test or train must be true, or validation data must be provided")
     if !isempty(validation)
         X, y = _predictor_response_from_presence_absence(validation[1],validation[2], predictorkeys(data(x)))
-        validation = (X, boolean_categorical(y))
+        validation = (X, y)
     end
 
     _evaluate(x, measures, train, test, validation)

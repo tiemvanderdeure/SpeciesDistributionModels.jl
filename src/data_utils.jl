@@ -56,66 +56,50 @@ traintestpairs(d::SDMdata) = d.traintestpairs
 resampler(d::SDMdata) = d.resampler
 nfolds(d::SDMdata) = length(d.traintestpairs)
 
-function _sdmdata(presences, absences, resampler, ::Nothing)
-    predictorkeys = Tuple(Base.intersect(Tables.schema(presences).names, Tables.schema(absences).names))
-    length(predictorkeys) > 0 || error("Presence and absence data have no common variable names - can't fit the ensemble.")
-    _sdmdata(presences, absences, resampler, predictorkeys)
-end
-
-function _sdmdata(presences, absences, resampler, predictorkeys::NTuple{<:Any, <:Symbol})
-    X, y = _predictor_response_from_presence_absence(presences, absences, predictorkeys)
-    _sdmdata(X, y, resampler, predictorkeys)
-end
-
-# in case input is a table
-function _sdmdata(X, response::BitVector, resampler, ::Nothing)
-    columns = Tables.columntable(X)
-    Tables.rowcount(columns) == length(response) || error("Number of rows in predictors and response do not match")
-    predictorkeys = Tables.columnnames(columns)
-    _sdmdata(columns, response, resampler, predictorkeys)
-end
-
-_sdmdata(X::Tables.ColumnTable{K}, y::BitVector, resampler, predictorkeys::NTuple{<:Any, <:Symbol}) where K =
-    if K == predictorkeys
-        _sdmdata(X, boolean_categorical(y), resampler)
+# if input is two tables of presences and absences
+function _sdmdata(presences, absences, resampler, predictorkeys)
+    Tables.istable(presences) || throw(ArgumentError("Presences must be a Tables.jl-compatible table"))
+    Tables.istable(absences) || throw(ArgumentError("Absences must be a Tables.jl-compatible table"))
+    p_columns = Tables.columns(presences)
+    a_columns = Tables.columns(absences)
+    # get predictor keys
+    if isnothing(predictorkeys)
+        predictorkeys = Tuple(Base.intersect(keys(p_columns), keys(a_columns)))
+        length(predictorkeys) > 0 || throw(ArgumentError("Presence and absence data have no common variable names - can't fit the ensemble."))
     else
-        _sdmdata(X[predictorkeys], boolean_categorical(y), resampler)
+        if haskey(p_columns, :geometry) && haskey(a_columns, :geometry)
+            predictorkeys = (predictorkeys..., :geometry)
+        end
     end
-
-function _sdmdata(
-    X::Tables.ColumnTable, 
-    y::BooleanCategorical, 
-    resampler::CV, 
-)
-    shuffled_resampler = CV(; nfolds = resampler.nfolds, rng = resampler.rng, shuffle = true)
-    traintestpairs = MLJBase.train_test_pairs(shuffled_resampler, eachindex(y), X, y)
-    _sdmdata(X, y, traintestpairs, shuffled_resampler)
+    X,y = _predictor_response_from_presence_absence(presences, absences, predictorkeys)
+    _sdmdata(X, y, resampler)
+end
+# in case input is a table with bools for presence/absence
+function _sdmdata(X, response::BitVector, resampler, predictorkeys)
+    Tables.istable(X) || throw(ArgumentError("X must be a Tables.jl-compatible table"))
+    _sdmdata(Tables.columntable(X), response, resampler, predictorkeys)
+end
+_sdmdata(X::Tables.ColumnTable, response::BitVector, resampler, ::Nothing) = 
+    _sdmdata(X, response, resampler, Tables.columnnames(X))
+function _sdmdata(X::Tables.ColumnTable, y::BitVector, resampler, predictorkeys::Tuple)
+    Tables.rowcount(X) == length(y) || error("Number of rows in predictors and response do not match")
+    predictorkeys = haskey(X, :geometry) ? (predictorkeys..., :geometry) : predictorkeys
+    _sdmdata(X[predictorkeys], boolean_categorical(y), resampler)
 end
 function _sdmdata(
     X::Tables.ColumnTable, 
     y::BooleanCategorical, 
     resampler::MLJBase.ResamplingStrategy, 
 )
+    # hack to allways shuffle CV
+    resampler = resampler isa CV ? ConstructionBase.setproperties(resampler, (; shuffle = true)) : resampler
     traintestpairs = MLJBase.train_test_pairs(resampler, eachindex(y), X, y)
-    _sdmdata(X, y, traintestpairs, resampler)
-end
-
-function _sdmdata(
-    X::Tables.ColumnTable, 
-    y::BooleanCategorical, 
-    traintestpairs::MLJBase.TrainTestPairs,
-    resampler = CustomRows()
-)
     geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
     X = Base.structdiff(X, NamedTuple{(:geometry,)})
     SDMdata(X, y, geometries, traintestpairs, resampler)
 end
 
-cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
-_map(::CPU1) = Base.map
-_map(::CPUThreads) = ThreadsX.map
-
-
+# Convert presence/absence data to predictor-response format. Used for SDMdata and in evaluate
 function _predictor_response_from_presence_absence(presences, absences, predictorkeys::NTuple{<:Any, <:Symbol})
     p_columns = Tables.columns(presences)
     a_columns = Tables.columns(absences) 
@@ -123,7 +107,13 @@ function _predictor_response_from_presence_absence(presences, absences, predicto
     n_absence = Tables.rowcount(a_columns)
 
     # merge presence and absence data into one namedtuple of vectors
-    X = NamedTuple{predictorkeys}([[a_columns[var]; p_columns[var]] for var in predictorkeys])
-    y = [falses(n_absence); trues(n_presence)]
+    X = NamedTuple(var => [a_columns[var]; p_columns[var]] for var in predictorkeys)
+    y = boolean_categorical([falses(n_absence); trues(n_presence)])
     return (X, y)
 end
+
+
+cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
+_map(::CPU1) = Base.map
+_map(::CPUThreads) = ThreadsX.map
+
