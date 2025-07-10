@@ -60,11 +60,9 @@ nfolds(d::SDMdata) = length(d.traintestpairs)
 function _sdmdata(presences, absences, resampler, predictorkeys)
     Tables.istable(presences) || throw(ArgumentError("Presences must be a Tables.jl-compatible table"))
     Tables.istable(absences) || throw(ArgumentError("Absences must be a Tables.jl-compatible table"))
-    # check that both tables have the same number of rows
     p_columns = Tables.columns(presences)
-    a_columns = Tables.columns(absences) 
-    n_presence = Tables.rowcount(p_columns)
-    n_absence = Tables.rowcount(a_columns)
+    a_columns = Tables.columns(absences)
+    # get predictor keys
     if isnothing(predictorkeys)
         predictorkeys = Tuple(Base.intersect(keys(p_columns), keys(a_columns)))
         length(predictorkeys) > 0 || throw(ArgumentError("Presence and absence data have no common variable names - can't fit the ensemble."))
@@ -73,10 +71,7 @@ function _sdmdata(presences, absences, resampler, predictorkeys)
             predictorkeys = (predictorkeys..., :geometry)
         end
     end
-    # merge presence and absence data into one namedtuple of vectors
-    X = NamedTuple(var => [a_columns[var]; p_columns[var]] for var in predictorkeys)
-    y = boolean_categorical([falses(n_absence); trues(n_presence)])
-    
+    X,y = _predictor_response_from_presence_absence(presences, absences, predictorkeys)
     _sdmdata(X, y, resampler)
 end
 # in case input is a table with bools for presence/absence
@@ -103,6 +98,20 @@ function _sdmdata(
     X = Base.structdiff(X, NamedTuple{(:geometry,)})
     SDMdata(X, y, geometries, traintestpairs, resampler)
 end
+
+# Convert presence/absence data to predictor-response format. Used for SDMdata and in evaluate
+function _predictor_response_from_presence_absence(presences, absences, predictorkeys::NTuple{<:Any, <:Symbol})
+    p_columns = Tables.columns(presences)
+    a_columns = Tables.columns(absences) 
+    n_presence = Tables.rowcount(p_columns)
+    n_absence = Tables.rowcount(a_columns)
+
+    # merge presence and absence data into one namedtuple of vectors
+    X = NamedTuple(var => [a_columns[var]; p_columns[var]] for var in predictorkeys)
+    y = boolean_categorical([falses(n_absence); trues(n_presence)])
+    return (X, y)
+end
+
 
 cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
 _map(::CPU1) = Base.map
