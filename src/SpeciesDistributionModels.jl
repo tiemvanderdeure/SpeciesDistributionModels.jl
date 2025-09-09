@@ -6,6 +6,7 @@ import GLM, PrettyTables, Rasters, Shapley, Loess, Distances
 import GeoInterface as GI
 import DimensionalData as DD
 import Rasters as RA
+import ConstructionBase
 
 using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
 using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase

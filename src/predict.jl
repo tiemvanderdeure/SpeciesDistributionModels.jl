@@ -144,7 +144,7 @@ function _reformat_and_predict_raster(s::Union{<:SDMensemble, SDMgroup, SDMmachi
     rs_preds = rs[predictorkeys(data(s))]
     missing_mask = Rasters.boolmask(rs_preds)
     d = rs_preds[missing_mask]
-    if any(map(x -> Missing <: eltype(x), rs_preds))
+    if any(Rasters.maplayers(x -> Missing <: eltype(x), rs_preds))
         # to get rid of Union{Missing, Float64} etc.
         layertypes = map(x -> Base.nonmissingtype(eltype(x)), (Rasters.layers(rs_preds)))
         nttype = NamedTuple{keys(layertypes), Tuple{values(layertypes)...}}
