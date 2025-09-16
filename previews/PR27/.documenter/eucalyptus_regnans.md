@@ -41,7 +41,7 @@ using CairoMakie
 Rasters.rplot(bio_aus)
 ```
 
-![](yvcwfpn.png){width=600px height=450px}
+![](oxpfosb.png){width=600px height=450px}
 
 ## Occurrence data {#Occurrence-data}
 
@@ -56,7 +56,7 @@ occurrences = thin(occurrences_raw.geometry, 5000)
 
 
 ```ansi
-1260-element Vector{Tuple{Float64, Float64}}:
+1254-element Vector{Tuple{Float64, Float64}}:
  (145.98298, -38.33349)
  (147.255219, -41.237844)
  (147.497946, -41.301006)
@@ -96,7 +96,7 @@ scatter!(ax, bg_points; color = :grey)
 fig
 ```
 
-![](ilvaoig.png){width=600px height=450px}
+![](xnnsogz.png){width=600px height=450px}
 
 ## Handling data {#Handling-data}
 
@@ -110,16 +110,16 @@ data = sdmdata(p_data, bg_data; resampler = CV(nfolds = 3))
 
 
 ```ansi
-SDMdata object with [0m[1m1244[22m presence points and [0m[1m500[22m absence points. 
+SDMdata object with [0m[1m1241[22m presence points and [0m[1m500[22m absence points. 
  
 [0m[1mResampling: [22m
 Data is divided into 3 folds using resampling strategy CV(nfolds = 3, …).
 ┌──────┬─────────┬────────┐
 │[1m fold [0m│[1m # train [0m│[1m # test [0m│
 ├──────┼─────────┼────────┤
-│    1 │    1162 │    582 │
-│    2 │    1163 │    581 │
-│    3 │    1163 │    581 │
+│    1 │    1160 │    581 │
+│    2 │    1161 │    580 │
+│    3 │    1161 │    580 │
 └──────┴─────────┴────────┘
 [0m[1mPredictor variables: [22m
 ┌───────┬────────────┬─────────┐
@@ -178,20 +178,20 @@ train
 │[1m    model [0m│[1m      auc [0m│[1m accuracy [0m│
 │[90m      Any [0m│[90m  Float64 [0m│[90m  Float64 [0m│
 ├──────────┼──────────┼──────────┤
-│   maxnet │ 0.999622 │ 0.996846 │
-│      brt │ 0.999989 │ 0.998853 │
-│      glm │ 0.995544 │ 0.995413 │
-│ ensemble │ 0.999912 │ 0.998566 │
+│   maxnet │ 0.990652 │ 0.986502 │
+│      brt │ 0.999809 │ 0.995118 │
+│      glm │ 0.986035 │ 0.985927 │
+│ ensemble │ 0.997726 │ 0.990522 │
 └──────────┴──────────┴──────────┘
 test
 ┌──────────┬──────────┬──────────┐
 │[1m    model [0m│[1m      auc [0m│[1m accuracy [0m│
 │[90m      Any [0m│[90m  Float64 [0m│[90m  Float64 [0m│
 ├──────────┼──────────┼──────────┤
-│   maxnet │ 0.999571 │ 0.997706 │
-│      brt │ 0.997155 │ 0.993691 │
-│      glm │ 0.996128 │ 0.996559 │
-│ ensemble │ 0.999528 │ 0.995412 │
+│   maxnet │ 0.989671 │ 0.988511 │
+│      brt │ 0.987174 │ 0.985639 │
+│      glm │ 0.984113 │ 0.985641 │
+│ ensemble │ 0.990452 │ 0.986789 │
 └──────────┴──────────┴──────────┘
 
 ```
@@ -206,7 +206,7 @@ pred = SDM.predict(ensemble, bio_aus; reducer = mean)
 plot(pred; colorrange = (0,1))
 ```
 
-![](kssefsa.png){width=600px height=450px}
+![](vdohlbm.png){width=600px height=450px}
 
 ## Understanding the model {#Understanding-the-model}
 
@@ -219,14 +219,15 @@ variable_importance(expl)
 
 
 ```ansi
-(bio1 = 0.28758666152701806,
- bio12 = 0.09442528355889866,)
+(bio1 = 0.265132552091556,
+ bio12 = 0.11206274212074734,)
 ```
 
 
 We can also interactively plot the model explanation to get response curves.
 
-```@example test
+```julia
 interactive_response_curves(expl)
 ```
 
+![](jvhokzy.png){width=600px height=450px}
