@@ -73,7 +73,7 @@ end
     ## ensemble
     models = (
         rf = RandomForestClassifier(; rng),
-        rf2 = OneHotEncoder() |> RandomForestClassifier(; max_depth = 3, rng),
+        rf2 = MLJModels.OneHotEncoder() |> RandomForestClassifier(; max_depth = 3, rng),
         lm = LinearBinaryClassifier(),
         brt = EvoTreeClassifier(; rng)
     )
