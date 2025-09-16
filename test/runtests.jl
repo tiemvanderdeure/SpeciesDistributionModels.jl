@@ -1,4 +1,4 @@
-using SpeciesDistributionModels, MLJBase, MLJModels, Tables
+using SpeciesDistributionModels, MLJBase, Tables
 import SpeciesDistributionModels as SDM
 import CategoricalArrays as CA
 using StableRNGs, Distributions, Test
@@ -8,6 +8,7 @@ using Rasters
 using MLJGLMInterface: LinearBinaryClassifier
 using EvoTrees: EvoTreeClassifier
 using MLJDecisionTreeInterface: RandomForestClassifier
+using MLJTransforms: OneHotEncoder
 
 rng = StableRNG(0)
 #using Random; rng = Random.GLOBAL_RNG
@@ -73,7 +74,7 @@ end
     ## ensemble
     models = (
         rf = RandomForestClassifier(; rng),
-        rf2 = MLJModels.OneHotEncoder() |> RandomForestClassifier(; max_depth = 3, rng),
+        rf2 = OneHotEncoder() |> RandomForestClassifier(; max_depth = 3, rng),
         lm = LinearBinaryClassifier(),
         brt = EvoTreeClassifier(; rng)
     )
