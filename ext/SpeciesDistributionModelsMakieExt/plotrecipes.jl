@@ -112,11 +112,12 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
     ]
 
     map(ls_average, eachcol(ls_members), toggles) do line, lines, toggle
-        Makie.connect!(line.visible, toggle.active)
         lines_active = lift((t, t2) -> t & t2, (toggle.active), (all_models_toggle.active))
-
-        for l in lines
-            Makie.connect!(l.visible, lines_active)
+        on(toggle.active) do active
+            Makie.update!(line, visible = active)
+        end
+        on(lines_active) do active
+            Makie.update!.(lines, visible = active)
         end
     end
 
@@ -157,7 +158,9 @@ function SDM.interactive_response_curves(expl::SDMensembleExplanation)
     end
 
     map(machine_group_indices, scatters) do m_idx, scatter
-        Makie.connect!(scatter.visible, toggles[m_idx].active)
+        on(toggles[m_idx].active) do active
+            Makie.update!(scatter, visible = active)
+        end
     end
 
     function update()
@@ -187,9 +190,10 @@ function SDM.interactive_response_curves(expl::SDMensembleExplanation)
 
     loess_l = Makie.lines!(ax, us, smooth_ys, linewidth = 7, color = :black, alpha = 1)
     loess_b = Makie.band!(ax, us, lower_ys, upper_ys, alpha = 0.5)
-    Makie.connect!(loess_l.visible, any_toggle)
-    Makie.connect!(loess_b.visible, any_toggle)
-
+    on(any_toggle) do toggle
+        Makie.update!(loess_l, visible = toggle)
+        Makie.update!(loess_b, visible = toggle)
+    end
 
     Makie.on(x -> update(), var_menu.selection)
     Makie.on(x -> update(), span_slider.value)
