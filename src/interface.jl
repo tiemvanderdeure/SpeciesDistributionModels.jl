@@ -146,9 +146,6 @@ Use an `SDMmachine`, or `SDMensemble` to predict habitat suitability for some da
 If `newdata` is a `RasterStack`, the `predict` return a `Raster`; otherwise, return a `DimArray`.  
 Habitat suitability represented by a floating-point number between 0 and 1.
 """
-function predict(m::SDMmachine, d; clamp = false)
-    _reformat_and_predict(m, d, clamp)
-end
 function predict(e::SDMensemble, d; clamp = false, threaded = false)
     _reformat_and_predict(e, d, clamp, threaded)
 end

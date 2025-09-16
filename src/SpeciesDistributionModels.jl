@@ -35,10 +35,10 @@ include("collinearity.jl")
 include("ensemble.jl")
 include("predict.jl")
 include("evaluate.jl")
+include("extensions.jl")
 #=
 include("explain/explain.jl")
 include("explain/shapley.jl")
-include("extensions.jl")
 =#
 include("thin.jl")
 include("interface.jl")

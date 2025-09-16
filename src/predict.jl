@@ -37,24 +37,24 @@ function _predict!(output::RA.AbstractRaster, data::RA.AbstractRasterStack, e::S
     _predict!(outputslices, data[bm], e, threaded)
     return output
 end
-function _predict!(output::RA.AbstractRaster, data::RA.AbstractRasterStack, e::SDMmachine)
+function _predict!(output::RA.AbstractRaster, data::RA.AbstractRasterStack, e)
     bm = Rasters.boolmask(data)
     @views _predict!(output[bm], data[bm], e)
     return output
 end
-function _predict!(output::DimArray, data, e::SDMensemble, threaded::Bool)
+function _predict!(output::DimArray{<:AbstractArray}, data, e::SDMensemble, threaded::Bool)
     @maybe_threads threaded for I in DD.DimIndices(e)
-        _predict!(view(output, I), data, e[I])
+        _predict!(output[I], data, e[I])
     end
     return output
 end
-function _predict!(output::AbstractArray, data, m::SDMmachine)
-    prediction = MLJBase.predict(m.machine, data)
+function _predict!(output::AbstractArray, data, m)
+    prediction = MLJBase.predict(m, data)
     vec(output) .= MLJBase.pdf.(prediction, true)
     return output
 end
 # view(output, I) can result in a 0-dimension array
-_predict!(output::DimArray{<:AbstractArray, 0}, data, m::SDMmachine) = _predict!(first(output), data, m)
+_predict!(output::DimArray{<:AbstractArray, 0}, data, m) = _predict!(first(output), data, m)
 
 #=
 _

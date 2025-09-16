@@ -1,49 +1,49 @@
-struct SDMevaluation
-    score::AbstractFloat
-    threshold::Union{Missing, <:AbstractFloat}
-    machine::SDMmachine
+const evaluationkeys = (:score, :threshold)
+const ScoreType = NamedTuple{evaluationkeys, Tuple{Float64, Union{Missing, Float64}}}
+
+struct SDMensembleEvaluation{T,N,L,D,R} <: DD.AbstractDimStack{(:score, :threshold, :ensemble), T, N, L}
+    data::L
+    dims::D
+    refdims::R
+    sdmdata::SDMdata
 end
 
-struct SDMensembleEvaluation{N, D} <: DD.AbstractBasicDimArray{SDMevaluation, N, D}
-    stack::DimStack{(:scores, :thresholds)}
-    ensemble::SDMensemble
+function SDMensembleEvaluation(stack::DD.AbstractDimStack, ensemble::SDMensemble)
+    ds = DD.DimStack(
+        (score = stack.score, threshold = stack.threshold, ensemble = ensemble),)
+    SDMensembleEvaluation(ds, sdmdata(ensemble))
+end
+function SDMensembleEvaluation(stack::DD.AbstractDimStack{K,T,N,L}, sdmdata::SDMdata) where{K, T, N, L}
+    dims = DD.dims(stack)
+    refdims = DD.refdims(stack)
+    SDMensembleEvaluation{T,N,L,typeof(dims), typeof(refdims)}(
+        parent(stack), DD.dims(stack), DD.refdims(stack), sdmdata)
 end
 
-SDMensembleEvaluation(stack::DimStack{(:scores, :thresholds), <:Any, N, <:Any, D}, ensemble::SDMensemble) where {N, D} = 
-    SDMensembleEvaluation{N,D}(stack, ensemble)
+Base.@constprop :aggressive Base.@propagate_inbounds function Base.getindex(ev::SDMensembleEvaluation, key::Symbol)
+    if key === :ensemble
+        SDMensemble(parent(ev)[key], DD.dims(ev), DD.refdims(ev), :ensemble, sdmdata(ev))
+    else
+        DD.DimArray(parent(ev)[key], DD.dims(ev), DD.refdims(ev), key, DD.NoMetadata())
+    end
+end
+
+sdmdata(ev::SDMensembleEvaluation) = getfield(ev, :sdmdata)
+DD.metadata(ev::SDMensembleEvaluation) = DD.NoMetadata()
 
 function Base.show(io::IO, mime::MIME"text/plain", ev::SDMensembleEvaluation)
-    meanscores = Statistics.mean(ev.stack.scores, dims = :fold)[fold = 1]
+    meanscores = Statistics.mean(ev.score, dims = :fold)[fold = 1]
     _, displaywidth = displaysize(io)
     blockwidth = displaywidth
     io = IOContext(io, :dim_brackets => false)
     println(io, "SDMensembleEvaluation with dimensions:")
-    DD.Dimensions.show_dims(io, mime, DD.dims(ev))
+    lines, blockwidth = DD.show_main(io, mime, ev)
     #DD.print_dims_block(io, mime, DD.dims(ev); displaywidth, blockwidth)
     println(io, "\n\nMean training performance:")
     DD.print_array(io, mime, meanscores[dataset = DD.At(:train)])
     println(io, "\n\nMean test performance:")
     DD.print_array(io, mime, meanscores[dataset = DD.At(:test)])
 end
-
-# TODO: show method for a single SDMevaluation
-
-# Basic operations on evaluate objects
-DD.dims(ev::SDMensembleEvaluation) = DD.dims(ev.stack)
-ensemble(ev::SDMensembleEvaluation) = getfield(ev, :ensemble)
-scores(ev::SDMensembleEvaluation) = ev.stack.scores
-thresholds(ev::SDMensembleEvaluation) = ev.stack.thresholds
-
-# TODO: disambiguate this
-function Base.getindex(ev::SDMensembleEvaluation, I...; kw...)
-    obj = Base.getindex(ev.stack, I...; kw...)
-    if obj isa DD.AbstractDimArray
-        SDMensembleEvaluation(obj, getindex(ensemble(ev), I...; kw...))
-    elseif obj isa NamedTuple
-        SDMevaluation(obj.scores, obj.thresholds, getindex(ensemble(ev), I...; kw...))
-    end
-end
-
 
 ## TODO: make this much smoother and more understandable code
 function _getrows(data::SDMdata, set::Symbol, fold)
@@ -96,7 +96,7 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
     y = getindex.(Ref(data.response), rows)
 
     predictions = DimArray{MLJBase.UnivariateFiniteVector}(undef, DD.dims(alldims, (:fold, :model, :dataset)))
-    DD.broadcast_dims!(predictions, machines(ensemble), x) do m, x
+    DD.broadcast_dims!(predictions, ensemble, x) do m, x
         MLJBase.predict(m, x)
     end
 
@@ -113,7 +113,7 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
     end
 
     # pre-allocate the evaluation stack - its layers are `scores` and `thresholds`
-    evaluationstack = DimStack((scores = zeros(alldims), thresholds = DD.DimArray{Union{Missing, Float64}}(undef, alldims)))
+    evaluationstack = DimStack((score = zeros(alldims), threshold = DD.DimArray{Union{Missing, Float64}}(undef, alldims)))
     # evaluate - replace with a broadcast_dims! in the future?
     for I in DD.DimIndices(alldims)
         evaluationstack[I] = _apply_measure(
