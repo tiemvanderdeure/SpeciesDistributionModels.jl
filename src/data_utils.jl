@@ -112,8 +112,12 @@ function _predictor_response_from_presence_absence(presences, absences, predicto
     return (X, y)
 end
 
-
-cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
-_map(::CPU1) = Base.map
-_map(::CPUThreads) = ThreadsX.map
-
+macro maybe_threads(flag, expr)
+    quote
+        if $(flag)
+            Threads.@threads $expr
+        else
+            $expr
+        end
+    end |> esc
+end
