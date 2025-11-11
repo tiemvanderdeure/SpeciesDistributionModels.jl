@@ -1,35 +1,35 @@
-struct SDMensemble{N,D,R,A<:AbstractArray{<:Machine}} <: DD.AbstractDimArray{Machine,N,D,A}
+struct SDMensemble{N,D,R,A<:AbstractArray{<:Machine},M<:SDMmetadata} <: DD.AbstractDimArray{Machine,N,D,A}
     data::A
     dims::D
     refdims::R
     name::Symbol
-    sdmdata::SDMdata
+    metadata::M
 end
-function SDMensemble(machines::A, dims::D, refdims::R, name::Symbol, sdmdata::SDMdata) where {A<:AbstractArray{<:Any, N}, D, R} where N
-    SDMensemble{N,D,R,A}(machines, dims, refdims, name, sdmdata) 
+function SDMensemble(machines::A, dims::D, refdims::R, name::Symbol, metadata::M) where {A<:AbstractArray{<:Any, N}, D, R, M} where N
+    SDMensemble{N,D,R,A,M}(machines, dims, refdims, name, metadata) 
 end
-SDMensemble(machines::DD.DimArray{<:Machine}, sdmdata) =
-    SDMensemble(parent(machines), DD.dims(machines), DD.refdims(machines), DD.name(machines), sdmdata)
+SDMensemble(machines::DD.DimArray{<:Machine}, sdmdata::SDMdata) =
+    SDMensemble(parent(machines), DD.dims(machines), DD.refdims(machines), DD.name(machines), SDMmetadata(sdmdata, NamedTuple()))
+SDMensemble(machines::DD.DimArray{<:Machine}) =
+    SDMensemble(parent(machines), DD.dims(machines), DD.refdims(machines), DD.name(machines), DD.metadata(machines))
 
-    # TODO Maybe make a special metadata that stores sdmdata
-DD.metadata(e::SDMensemble, args...) = DD.NoMetadata()
 DimArray(A::SDMensemble) = DimArray(parent(A), DD.dims(A); refdims = DD.refdims(A), name = DD.name(A))
-function DD.rebuild(A::SDMensemble; data, dims = DD.dims(A), refdims = DD.refdims(A), name = DD.name(A), kw...)
-    if eltype(data) <: Machine
-        SDMensemble(data, dims, refdims, name, A.sdmdata)
+function DD.rebuild(A::SDMensemble; data, dims = DD.dims(A), refdims = DD.refdims(A), name = DD.name(A), metadata = DD.metadata(A), kw...)
+    if eltype(data) <: Machine && metadata isa SDMmetadata
+        SDMensemble(data, dims, refdims, name, metadata)
     else
-        DD.rebuild(DimArray(A); data, dims, refdims, name, kw...)
+        DD.rebuild(DimArray(A); data, dims, refdims, name, metadata, kw...)
     end
 end
 
 @inline function DD.rebuild(
     A::SDMensemble, data, dims::Tuple, refdims, name, metadata
 ) 
-    SDMensemble(data, dims, refdims, name, A.sdmdata)
+    SDMensemble(data, dims, refdims, name, metadata)
 end
 
 # easy access to the fields of the type
-sdmdata(s::SDMensemble) = s.sdmdata
+sdmdata(s::SDMensemble) = DD.metadata(s).sdmdata
 machines(s::SDMensemble) = parent(s)
 
 function models(ensemble::SDMensemble)

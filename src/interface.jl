@@ -106,11 +106,11 @@ function evaluate( # Define this as an extension of MLJBase.evaluate??
 )
     test || train || isempty(validation) || error("No data to test. Either test or train must be true, or validation data must be provided")
     if !isempty(validation)
-        X, y = _predictor_response_from_presence_absence(validation[1],validation[2], predictorkeys(data(x)))
+        X, y = _predictor_response_from_presence_absence(validation[1],validation[2], predictorkeys(sdmdata(x)))
         validation = (X, y)
     end
 
-    _evaluate(x, measures, train, test)
+    _evaluate(x, measures, train, test, validation)
 end
 
 

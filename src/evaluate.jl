@@ -1,35 +1,45 @@
 const evaluationkeys = (:score, :threshold)
 const ScoreType = NamedTuple{evaluationkeys, Tuple{Float64, Union{Missing, Float64}}}
 
-struct SDMensembleEvaluation{T,N,L,D,R} <: DD.AbstractDimStack{(:score, :threshold, :ensemble), T, N, L}
-    data::L
-    dims::D
-    refdims::R
-    sdmdata::SDMdata
+struct SDMensembleEvaluation{T,N,L,D<:DD.DimStack} <: DD.AbstractDimStack{(:score, :threshold, :ensemble), T, N, L}
+    data::D
 end
-
-function SDMensembleEvaluation(stack::DD.AbstractDimStack, ensemble::SDMensemble)
+function SDMensembleEvaluation(stack::DD.AbstractDimStack{(:score, :threshold)}, ensemble::SDMensemble)
     ds = DD.DimStack(
-        (score = stack.score, threshold = stack.threshold, ensemble = ensemble),)
+        (score = stack.score, threshold = stack.threshold, ensemble = ensemble),
+        metadata = DD.metadata(ensemble)
+    )
     SDMensembleEvaluation(ds, sdmdata(ensemble))
 end
-function SDMensembleEvaluation(stack::DD.AbstractDimStack{K,T,N,L}, sdmdata::SDMdata) where{K, T, N, L}
-    dims = DD.dims(stack)
-    refdims = DD.refdims(stack)
-    SDMensembleEvaluation{T,N,L,typeof(dims), typeof(refdims)}(
-        parent(stack), DD.dims(stack), DD.refdims(stack), sdmdata)
-end
+SDMensembleEvaluation(stack::DD.AbstractDimStack{(:score, :threshold, :ensemble), T, N, L}) where {T,N,L} =
+    SDMensembleEvaluation{T,N,L, typeof(stack)}(stack)
 
 Base.@constprop :aggressive Base.@propagate_inbounds function Base.getindex(ev::SDMensembleEvaluation, key::Symbol)
     if key === :ensemble
-        SDMensemble(parent(ev)[key], DD.dims(ev), DD.refdims(ev), :ensemble, sdmdata(ev))
+        SDMensemble(parent(ev)[key])
     else
         DD.DimArray(parent(ev)[key], DD.dims(ev), DD.refdims(ev), key, DD.NoMetadata())
     end
 end
 
-sdmdata(ev::SDMensembleEvaluation) = getfield(ev, :sdmdata)
-DD.metadata(ev::SDMensembleEvaluation) = DD.NoMetadata()
+function DD.rebuild(ev::SDMensembleEvaluation; kw...)
+    parent = DD.rebuild(parent(ev); kw...)
+    if keys(parent) === (:score, :threshold, :ensemble)
+        SDMensembleEvaluation(parent)
+    else
+        parent
+    end
+end
+
+DD.parent(s::SDMensembleEvaluation) = getfield(s, :data)
+
+sdmdata(ev::SDMensembleEvaluation) = metadata(ev).sdmdata
+
+for f in [:data, :dims, :refdims, :metadata, :layerdims, :layermetadata]
+    @eval begin
+        DD.$(f)(ds::SDMensembleEvaluation) = DD.$(f)(parent(ds))
+    end
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", ev::SDMensembleEvaluation)
     meanscores = Statistics.mean(ev.score, dims = :fold)[fold = 1]
@@ -74,26 +84,37 @@ function _get_datasets(ds::Tuple{Dim{:dataset}, Dim{:fold}}, ensemble::SDMensemb
     end
 end
 
-function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, test::Bool)
+function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, test::Bool, validation::Tuple)
     data = sdmdata(ensemble)
-    measuredim = Dim{:measure}(collect(keys(measures)))
-    dataset_dim = Symbol[]
-    train && push!(dataset_dim, :train)
-    test && push!(dataset_dim, :test)
-    dataset_dim = Dim{:dataset}(dataset_dim)
+    measuredim = DD.Categorical(collect(keys(measures)); order = DD.Unordered()) |> Dim{:measure}
+    datasets = Symbol[]
+    train && push!(datasets, :train)
+    test && push!(datasets, :test)
+    isempty(validation) || push!(datasets, :validation)
+    dataset_dim = DD.Categorical(datasets; order = DD.Unordered()) |> Dim{:dataset}
 
     alldims = (
         DD.dims(ensemble)..., 
         dataset_dim, 
         measuredim
-    ) |> DD.format
+    )
 
     # get a DimArray with row indices for each dataset and fold (if applicable)
     rows = _getrows(DD.dims(alldims, (:dataset, :fold)), ensemble)
     x = broadcast(rows) do r
-        map(p -> p[r], data.predictor)
+        if isnothing(r) # this is the case for validation data only!
+            validation[1]
+        else 
+            map(p -> p[r], data.predictor)
+        end
     end
-    y = getindex.(Ref(data.response), rows)
+    y = broadcast(rows) do r 
+        if isnothing(r)
+            validation[2]
+        else 
+            getindex(data.response, r)
+        end
+    end
 
     predictions = DimArray{MLJBase.UnivariateFiniteVector}(undef, DD.dims(alldims, (:fold, :model, :dataset)))
     DD.broadcast_dims!(predictions, ensemble, x) do m, x
@@ -123,7 +144,8 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
             measures[DD.dims(I, :measure).val]
         )
     end
-    return SDMensembleEvaluation(evaluationstack, ensemble)
+    ev = DimStack(merge(evaluationstack, (; ensemble)), metadata = DD.metadata(ensemble))
+    return SDMensembleEvaluation(ev)
 end
 
 function _apply_measure(y_hat::MLJBase.UnivariateFiniteVector, y::MLJBase.CategoricalVector, (thresholds, conf_mats), measure)

@@ -121,3 +121,10 @@ macro maybe_threads(flag, expr)
         end
     end |> esc
 end
+
+struct SDMmetadata{X} <: DD.Lookups.AbstractMetadata{nothing, X}
+    sdmdata::SDMdata
+    metadata::X
+end
+SDMmetadata(sdmdata::SDMdata) = SDMmetadata(sdmdata, NamedTuple())
+DD.val(m::SDMmetadata) = m.metadata
