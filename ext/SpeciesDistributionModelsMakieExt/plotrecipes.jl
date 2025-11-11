@@ -112,11 +112,12 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
     ]
 
     map(ls_average, eachcol(ls_members), toggles) do line, lines, toggle
-        Makie.connect!(line.visible, toggle.active)
         lines_active = lift((t, t2) -> t & t2, (toggle.active), (all_models_toggle.active))
-
-        for l in lines
-            Makie.connect!(l.visible, lines_active)
+        on(toggle.active) do active
+            Makie.update!(line, visible = active)
+        end
+        on(lines_active) do active
+            Makie.update!.(lines, visible = active)
         end
     end
 
