@@ -6,7 +6,6 @@ using StableRNGs, Distributions, Test
 using Makie
 using Rasters
 
-
 rng = StableRNG(0)
 #using Random; rng = Random.GLOBAL_RNG
 
