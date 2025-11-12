@@ -33,7 +33,7 @@ Generate response curves for `ensemble`.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/interface.jl#L117-L127" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/interface.jl#L117-L127" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -66,7 +66,7 @@ Use an `SDMmachine`, or `SDMensemble` to predict habitat suitability for some da
 If `newdata` is a `RasterStack`, the `predict` return a `Raster`; otherwise, return a `DimArray`.   Habitat suitability represented by a floating-point number between 0 and 1.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/interface.jl#L132-L148" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/interface.jl#L132-L148" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -101,7 +101,7 @@ julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/collinearity.jl#L21-L43" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/collinearity.jl#L21-L43" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -146,7 +146,7 @@ ensemble = sdm(mydata, models)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/interface.jl#L43-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/interface.jl#L43-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -175,7 +175,7 @@ An `SDMdata` object containing the data provided. This object can be used to con
 
 **Example**
 
-```
+```julia
 using Rasters, SpeciesDistributionModels
 A = rand(10,10)
 B = rand(10,10)
@@ -193,7 +193,7 @@ mydata2 = sdmdata([p; a], [trues(4); falses(4)]; resampler = [([1,2],[5,6]), ([3
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/interface.jl#L1-L33" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/interface.jl#L1-L33" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -236,7 +236,7 @@ thin(Xoshiro(123), geometries, 1; distance = Euclidean())
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/thin.jl#L1-L31" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/thin.jl#L1-L31" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -269,7 +269,7 @@ This defaults to using auc, log_loss, and kappa. For threshold-dependent measure
 Validation data should be a `Tuple` with presences as the first field and absences as the second.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/62ef7db33ccaf066f5f9b25eab83bd7faebc6bcb/src/interface.jl#L78-L94" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/58a8b7b350996cae58617f23c9faa1a524f13ec3/src/interface.jl#L78-L94" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

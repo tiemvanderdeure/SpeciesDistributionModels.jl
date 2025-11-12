@@ -41,7 +41,7 @@ using CairoMakie
 Rasters.rplot(bio_aus)
 ```
 
-![](lgflzka.png){width=600px height=450px}
+![](ezfhwtu.png){width=600px height=450px}
 
 ## Occurrence data {#Occurrence-data}
 
@@ -56,17 +56,17 @@ occurrences = thin(occurrences_raw.geometry, 5000)
 
 
 ```ansi
-1249-element Vector{Tuple{Float64, Float64}}:
+1298-element Vector{Tuple{Float64, Float64}}:
  (145.98298, -38.33349)
+ (147.255219, -41.237844)
  (147.497946, -41.301006)
  (145.19167, -37.41639)
  (146.35, -37.36667)
  (147.899871, -41.147461)
+ (146.782197, -41.376415)
  (146.779808, -41.37551)
  (146.19722, -38.56889)
  (146.30667, -38.56472)
- (146.24194, -38.52083)
- (146.30333, -38.57611)
  ⋮
  (146.634191, -42.309965)
  (147.970709, -41.134905)
@@ -96,7 +96,7 @@ scatter!(ax, bg_points; color = :grey)
 fig
 ```
 
-![](hmcitmt.png){width=600px height=450px}
+![](rksoeat.png){width=600px height=450px}
 
 ## Handling data {#Handling-data}
 
@@ -110,16 +110,16 @@ data = sdmdata(p_data, bg_data; resampler = CV(nfolds = 3))
 
 
 ```ansi
-SDMdata object with [0m[1m1234[22m presence points and [0m[1m500[22m absence points. 
+SDMdata object with [0m[1m1281[22m presence points and [0m[1m500[22m absence points. 
  
 [0m[1mResampling: [22m
 Data is divided into 3 folds using resampling strategy CV(nfolds = 3, …).
 ┌──────┬─────────┬────────┐
 │[1m fold [0m│[1m # train [0m│[1m # test [0m│
 ├──────┼─────────┼────────┤
-│    1 │    1156 │    578 │
-│    2 │    1156 │    578 │
-│    3 │    1156 │    578 │
+│    1 │    1187 │    594 │
+│    2 │    1187 │    594 │
+│    3 │    1188 │    593 │
 └──────┴─────────┴────────┘
 [0m[1mPredictor variables: [22m
 ┌───────┬────────────┬─────────┐
@@ -172,9 +172,8 @@ ensemble = sdm(data, models)
  - rowsample: 1.0
  - colsample: 1.0
  - nbins: 64
- - alpha: 0.5
  - tree_type: binary
- - rng: Random.MersenneTwister(123, (0, 60120, 59118, 150))
+ - seed: 123
  - device: cpu
 
  [38;5;209m:glm[39m        LinearBinaryClassifier(fit_intercept = true, …)
@@ -197,25 +196,25 @@ SDMensembleEvaluation with dimensions:
 [90m├───────────────────────────────┴──────────────────────────────────────── dims ┐[39m
   [38;5;209m↓ [39m[38;5;209mmodel[39m Categorical{Symbol} [38;5;209m[:maxnet, …, :glm][39m [38;5;244mUnordered[39m,
   [38;5;32m→ [39m[38;5;32mfold[39m Sampled{Int64} [38;5;32m1:3[39m [38;5;244mForwardOrdered[39m [38;5;244mRegular[39m [38;5;244mPoints[39m,
-  [38;5;81m↗ [39m[38;5;81mdataset[39m Categorical{Symbol} [38;5;81m[:train, :test][39m [38;5;244mReverseOrdered[39m,
-  [38;5;204m⬔ [39m[38;5;204mmeasure[39m Categorical{Symbol} [38;5;204m[:auc, :accuracy][39m [38;5;244mReverseOrdered[39m
+  [38;5;81m↗ [39m[38;5;81mdataset[39m Categorical{Symbol} [38;5;81m[:train, :test][39m [38;5;244mUnordered[39m,
+  [38;5;204m⬔ [39m[38;5;204mmeasure[39m Categorical{Symbol} [38;5;204m[:auc, :accuracy][39m [38;5;244mUnordered[39m
 [90m├────────────────────────────────────────────────────────────────────── layers ┤[39m
 [38;5;37m  :score    [39m[90m eltype: [39mFloat64[90m dims: [39m[38;5;209mmodel[39m, [38;5;32mfold[39m, [38;5;81mdataset[39m, [38;5;204mmeasure[39m[90m size: [39m[38;5;209m3[39m×[38;5;32m3[39m×[38;5;81m2[39m×[38;5;204m2[39m
 [38;5;37m  :threshold[39m[90m eltype: [39mUnion{Missing, Float64}[90m dims: [39m[38;5;209mmodel[39m, [38;5;32mfold[39m, [38;5;81mdataset[39m, [38;5;204mmeasure[39m[90m size: [39m[38;5;209m3[39m×[38;5;32m3[39m×[38;5;81m2[39m×[38;5;204m2[39m
-[38;5;37m  :ensemble [39m[90m eltype: [39mMLJBase.Machine[90m dims: [39m[38;5;209mmodel[39m, [38;5;32mfold[39m, [38;5;81mdataset[39m, [38;5;204mmeasure[39m[90m size: [39m[38;5;209m3[39m×[38;5;32m3[39m×[38;5;81m2[39m×[38;5;204m2[39m
+[38;5;37m  :ensemble [39m[90m eltype: [39mMLJBase.Machine[90m dims: [39m[38;5;209mmodel[39m, [38;5;32mfold[39m[90m size: [39m[38;5;209m3[39m×[38;5;32m3[39m
 
 
 Mean training performance:
  [38;5;209m↓[39m [38;5;32m→[39m        [38;5;32m:auc[39m      [38;5;32m:accuracy[39m
-  [38;5;209m:maxnet[39m  0.997655  0.995386
-  [38;5;209m:brt[39m     0.997411  0.99654
-  [38;5;209m:glm[39m     0.995593  0.995098
+  [38;5;209m:maxnet[39m  0.995373  0.993543
+  [38;5;209m:brt[39m     0.996585  0.996631
+  [38;5;209m:glm[39m     0.992437  0.993262
 
 Mean test performance:
  [38;5;209m↓[39m [38;5;32m→[39m        [38;5;32m:auc[39m      [38;5;32m:accuracy[39m
-  [38;5;209m:maxnet[39m  0.997454  0.995963
-  [38;5;209m:brt[39m     0.997235  0.997116
-  [38;5;209m:glm[39m     0.995362  0.995386
+  [38;5;209m:maxnet[39m  0.995376  0.993821
+  [38;5;209m:brt[39m     0.996632  0.996631
+  [38;5;209m:glm[39m     0.992453  0.99326
 ```
 
 
