@@ -1,61 +1,44 @@
 abstract type SDMexplainMethod end
 
-# Type definitions for explanation objects
-struct SDMmachineExplanation
-    machine::SDMmachine
-    method::SDMexplainMethod
-    values::NamedTuple # Contains values
-    data::NamedTuple # Contains the data used to explain
+struct SDMexplanation{K,T,N,L,A<:DD.DimStack,A2<:SDMensemble} <: DD.AbstractDimStack{K,T,N,L}
+    data::A
+    ensemble::A2
+    method
+end
+function SDMexplanation(stack::DD.AbstractDimStack{K,T,N,L}, ensemble, method) where {K,T,N,L}
+    SDMexplanation{K,T,N,L,typeof(stack), typeof(ensemble)}(stack, ensemble, method)
 end
 
-struct SDMgroupExplanation <: AbstractVector{SDMmachineExplanation}
-    group::SDMgroup
-    machine_explanations::Vector{SDMmachineExplanation}
+DD.parent(ex::SDMexplanation) = getfield(ex, :data)
+sdm(ex::SDMexplanation) =  getfield(ex, :ensemble)
+sdmdata(ex::SDMexplanation) = sdmdata(ensemble(ex))
+method(ex::SDMexplanation) = getfield(ex, :method)
+
+for f in [:data, :dims, :refdims, :metadata, :layerdims, :layermetadata]
+    @eval begin
+        DD.$(f)(ds::SDMexplanation) = DD.$(f)(parent(ds))
+    end
 end
-
-struct SDMensembleExplanation <: AbstractVector{SDMgroupExplanation}
-    ensemble::SDMensemble
-    group_explanations::Vector{SDMgroupExplanation}
+# When rebuilding, make sure to make dims match for the ensemble
+function DD.rebuild(ex::SDMexplanation; dims, refdims, kw...)
+    parent = DD.rebuild(DD.parent(ex); dims, refdims, kw...)
+    ensemble = sdm(ex)
+    ensemble = isempty(refdims) ? ensemble : ensemble[first(DD.DimSelectors(refdims))]
+    ensemble = dims === DD.dims(ensemble) ? ensemble : ensemble[DD.DimSelectors(dims)]
+    SDMexplanation(parent, ensemble, method(ex))
 end
-
-#### Basic operations on Explanation objects ####
-Base.getindex(e::SDMgroupExplanation, i::Integer) = e.machine_explanations[i]
-Base.getindex(e::SDMensembleExplanation, i::Integer) = e.group_explanations[i]
-Base.size(e::SDMgroupExplanation) = Base.size(e.machine_explanations)
-Base.size(e::SDMensembleExplanation) = Base.size(e.group_explanations)
-
-variables(e::SDMmachineExplanation) = keys(e.values)
-data(e::SDMmachineExplanation) = e.data
-method(e::SDMmachineExplanation) = e.method
-
-for f in [:data, :variables, :method]
-    @eval $f(e::Union{SDMgroupExplanation, SDMensembleExplanation}) = $f(first(e))
-end
-
-machine_explanations(e::SDMgroupExplanation) = e.machine_explanations
-machine_explanations(e::SDMensembleExplanation) = reduce(vcat, machine_explanations.(e))
-
-
-#### Show methods ####
-function Base.show(io::IO, mime::MIME"text/plain", expl::SDMmachineExplanation)
-    println(io, "$(typeof(expl)) using method $(typeof(method(expl)))")
-end
-function Base.show(io::IO, mime::MIME"text/plain", expl::SDMgroupExplanation)
-    println(io, "$(typeof(expl)) using method $(typeof(method(expl)))")
-end
-function Base.show(io::IO, mime::MIME"text/plain", expl::SDMensembleExplanation)
-    println(io, "$(typeof(expl)) using method $(typeof(method(expl)))")
-end
-
 
 ## By default, variable importance is absolute mean for value for each variable in shapvalues
-function variable_importance(expl::SDMmachineExplanation)
-    map(vals -> Statistics.mean(abs, vals), expl.values)
+function variable_importance(expl::SDMexplanation)
+    DD.maplayers(vals -> Statistics.mean(Statistics.mean.(abs, vals)), expl)
 end
 
-function variable_importance(expl::Union{SDMgroupExplanation, SDMensembleExplanation})
-    group_var_imp = map(variable_importance, machine_explanations(expl))
-    map(Statistics.mean, Tables.columntable(group_var_imp))
+function _explain(ensemble::SDMensemble, method, d::NamedTuple{K}, predictors) where K
+    expl = map(ensemble) do mach
+        _explain(mach, method, d, predictors)
+    end
+    expl_stack = NamedTuple(k => getindex.(expl, k) for k in K) |> DimStack
+    return SDMexplanation(expl_stack, ensemble, method)
 end
 
 #summary = NamedTuple(var => mapreduce(x -> getfield(x, var), +, importances) / Base.length(importances) for var in ensemble.predictors)

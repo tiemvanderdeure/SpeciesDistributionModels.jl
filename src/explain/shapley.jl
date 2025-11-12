@@ -17,30 +17,15 @@ function ShapleyValues(N::Integer; threaded = false, rng = Random.GLOBAL_RNG)
     ShapleyValues(algorithm)
 end
 
-function _explain(mach::SDMmachine, method::ShapleyValues, d, predictors)
-    shapvalues = map(predictors) do predictor
+function _explain(mach::Machine, method::ShapleyValues, d, predictors)
+    map(predictors) do predictor
         Shapley.shapley(
-            x -> _reformat_and_predict(mach, x, false), # some ml models return float32s - where to handle this?
+            x -> MLJBase.pdf.(MLJBase.predict(mach, x), true), # some ml models return float32s - where to handle this?
             method.algorithm, 
             d,
             predictor,
             d
         )
     end |> NamedTuple{predictors}
-    return SDMmachineExplanation(mach, method, shapvalues, d)
 end
 
-function _explain(group::SDMgroup, method::ShapleyValues, d, predictors)
-    machine_explanations = map(group) do mach
-        _explain(mach, method, d, predictors)
-    end
-    return SDMgroupExplanation(group, machine_explanations)
-end
-
-function _explain(ensemble::SDMensemble, method::ShapleyValues, d, predictors)
-    group_explanations = map(ensemble) do group
-        _explain(group, method, d, predictors)
-    end
-    
-    return SDMensembleExplanation(ensemble, group_explanations)
-end
