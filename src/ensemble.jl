@@ -75,7 +75,7 @@ end
 
 function _initialize_ensemble(data, models::NamedTuple, cache, scitype_check_level)
     # set up dimensions
-    modeldim = Dim{:model}(collect(keys(models)))
+    modeldim = DD.Categorical(collect(keys(models)); order = DD.Unordered()) |> Dim{:model}
     folddim = Dim{:fold}(1:length(data.traintestpairs))
     dims = (modeldim, folddim)
 
