@@ -125,7 +125,7 @@ Generate response curves for `ensemble`.
 - `predictors`: which predictors to generate response curves for. Defaults to all variables in `data`.
 
 """
-function explain(e::SDMensemble; method, data = data(e).predictor, predictors = keys(data))
+function explain(e::SDMensemble; method, data = sdmdata(e).predictor, predictors = keys(data))
     _explain(e, method, data, predictors)
 end
 
@@ -149,6 +149,5 @@ Habitat suitability represented by a floating-point number between 0 and 1.
 function predict(e::SDMensemble, d; clamp = false, threaded = false)
     _reformat_and_predict(e, d, clamp, threaded)
 end
-
 
 
