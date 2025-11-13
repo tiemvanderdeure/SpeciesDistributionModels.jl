@@ -41,7 +41,7 @@ using CairoMakie
 Rasters.rplot(bio_aus)
 ```
 
-![](qyscvye.png){width=600px height=450px}
+![](lnsuijp.png){width=600px height=450px}
 
 ## Occurrence data {#Occurrence-data}
 
@@ -56,8 +56,9 @@ occurrences = thin(occurrences_raw.geometry, 5000)
 
 
 ```ansi
-1272-element Vector{Tuple{Float64, Float64}}:
+1256-element Vector{Tuple{Float64, Float64}}:
  (145.98298, -38.33349)
+ (147.255219, -41.237844)
  (147.497946, -41.301006)
  (145.19167, -37.41639)
  (146.35, -37.36667)
@@ -65,18 +66,17 @@ occurrences = thin(occurrences_raw.geometry, 5000)
  (146.782197, -41.376415)
  (146.779808, -41.37551)
  (146.19722, -38.56889)
- (146.30667, -38.56472)
  (146.24194, -38.52083)
  ⋮
  (146.634191, -42.309965)
  (147.970709, -41.134905)
  (147.985049, -41.145683)
+ (147.795927, -41.204164)
  (145.791172, -41.193094)
  (145.30611, -37.52194)
  (146.16306, -37.82861)
  (146.16306, -37.83)
  (146.16139, -37.82861)
- (146.15806, -37.83)
 ```
 
 
@@ -96,7 +96,7 @@ scatter!(ax, bg_points; color = :grey)
 fig
 ```
 
-![](xaoslqk.png){width=600px height=450px}
+![](jfhgrai.png){width=600px height=450px}
 
 ## Handling data {#Handling-data}
 
@@ -110,16 +110,16 @@ data = sdmdata(p_data, bg_data; resampler = CV(nfolds = 3))
 
 
 ```ansi
-SDMdata object with [0m[1m1256[22m presence points and [0m[1m500[22m absence points. 
+SDMdata object with [0m[1m1238[22m presence points and [0m[1m500[22m absence points. 
  
 [0m[1mResampling: [22m
 Data is divided into 3 folds using resampling strategy CV(nfolds = 3, …).
 ┌──────┬─────────┬────────┐
 │[1m fold [0m│[1m # train [0m│[1m # test [0m│
 ├──────┼─────────┼────────┤
-│    1 │    1170 │    586 │
-│    2 │    1171 │    585 │
-│    3 │    1171 │    585 │
+│    1 │    1158 │    580 │
+│    2 │    1159 │    579 │
+│    3 │    1159 │    579 │
 └──────┴─────────┴────────┘
 [0m[1mPredictor variables: [22m
 ┌───────┬────────────┬─────────┐
@@ -206,15 +206,15 @@ SDMensembleEvaluation with dimensions:
 
 Mean training performance:
  [38;5;209m↓[39m [38;5;32m→[39m        [38;5;32m:auc[39m      [38;5;32m:accuracy[39m
-  [38;5;209m:maxnet[39m  0.995432  0.993736
-  [38;5;209m:brt[39m     0.996101  0.99402
-  [38;5;209m:glm[39m     0.993632  0.993451
+  [38;5;209m:maxnet[39m  0.995856  0.99367
+  [38;5;209m:brt[39m     0.996292  0.994821
+  [38;5;209m:glm[39m     0.990054  0.992807
 
 Mean test performance:
  [38;5;209m↓[39m [38;5;32m→[39m        [38;5;32m:auc[39m      [38;5;32m:accuracy[39m
-  [38;5;209m:maxnet[39m  0.995473  0.994306
-  [38;5;209m:brt[39m     0.996333  0.994304
-  [38;5;209m:glm[39m     0.993737  0.993737
+  [38;5;209m:maxnet[39m  0.995755  0.993669
+  [38;5;209m:brt[39m     0.996146  0.995971
+  [38;5;209m:glm[39m     0.989778  0.993094
 ```
 
 
@@ -239,8 +239,8 @@ variable_importance(expl)
 
 
 ```ansi
-(bio1 = 0.2781913000904678,
- bio12 = 0.09410475185646491,)
+(bio1 = 0.31769056423412023,
+ bio12 = 0.059093682703856586,)
 ```
 
 
