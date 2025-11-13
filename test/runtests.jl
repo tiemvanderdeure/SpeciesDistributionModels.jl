@@ -7,8 +7,8 @@ using Makie
 using Rasters
 
 using MLJGLMInterface: LinearBinaryClassifier
-using EvoTrees: EvoTreeClassifier
 using MLJDecisionTreeInterface: RandomForestClassifier
+using Maxnet: MaxnetBinaryClassifier
 import MLJTransforms: OneHotEncoder
 
 rng = StableRNG(0)

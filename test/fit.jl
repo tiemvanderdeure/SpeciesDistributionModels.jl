@@ -4,7 +4,7 @@
         rf = RandomForestClassifier(; rng),
         rf2 = OneHotEncoder() |> RandomForestClassifier(; max_depth = 3, rng),
         lm = LinearBinaryClassifier(),
-        brt = EvoTreeClassifier(; rng)
+        maxnet = MaxnetBinaryClassifier(; rng)
     )
 
     ensemble = sdm(data, models;
