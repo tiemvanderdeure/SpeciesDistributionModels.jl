@@ -18,6 +18,9 @@
     @test !DimensionalData.isordered(dims(ensemble, :model))
     @test all(hasdim(ensemble, (:model, :fold)))
     @test isequal(lookup(ensemble, :model), collect(keys(models)))
+
+    @test isequal(SDM.models(ensemble), collect(models))
+    @test SDM.models(ensemble) isa DimVector
 end
 
 ensemble = sdm(data, (; lm = LinearBinaryClassifier()))
