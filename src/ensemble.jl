@@ -30,7 +30,6 @@ end
 
 # easy access to the fields of the type
 sdmdata(s::SDMensemble) = DD.metadata(s).sdmdata
-machines(s::SDMensemble) = parent(s)
 
 function models(ensemble::SDMensemble)
     if DD.hasdim(ensemble, :fold)
@@ -42,9 +41,6 @@ function models(ensemble::SDMensemble)
     end
 end
 
-_folddim(ensemble::SDMensemble) = DD.hasdim(ensemble, :fold) ? DD.dims(ensemble, :fold) : DD.refdims(ensemble, :fold)
-_modeldim(ensemble::SDMensemble) = DD.hasdim(ensemble, :model) ? DD.dims(ensemble, :model) : DD.refdims(ensemble, :model)
-
 ## Show methods
 function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
     lines, blockwidth = DD.show_main(io, mime, ensemble)
@@ -54,12 +50,6 @@ function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
     ctx = IOContext(io, :blockwidth => blockwidth, :displaysize => (ds[1] - lines, ds[2]))
     DD.show_after(ctx, mime, models(ensemble))
 end
-
-## Table interface
-Tables.istable(::Type{SDMensemble}) = true
-Tables.schema(ensemble::SDMensemble) = Tables.schema(info(ensemble))
-Tables.rows(ensemble::SDMensemble) = Tables.rows(info(ensemble))
-Tables.columns(ensemble::SDMensemble) = Tables.columns(info(ensemble))
 
 function _sdm(
     data::SDMdata,
