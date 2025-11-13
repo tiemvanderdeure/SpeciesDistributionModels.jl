@@ -42,9 +42,9 @@ function _predict!(output::RA.AbstractRaster, data::RA.AbstractRasterStack, e)
     @views _predict!(output[bm], data[bm], e)
     return output
 end
-function _predict!(output::DimArray{<:AbstractArray}, data, e::SDMensemble, threaded::Bool)
+function _predict!(output::DimArray, data, e::SDMensemble, threaded::Bool)
     @maybe_threads threaded for I in DD.DimIndices(e)
-        _predict!(output[I], data, e[I])
+        _predict!(view(output, I), data, e[I])
     end
     return output
 end
