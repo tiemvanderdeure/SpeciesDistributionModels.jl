@@ -27,7 +27,7 @@ ShapleyValues(N::Integer; threaded = true, rng = Random.GLOBAL_RNG)
 Use to specify use Shapley values as method in [`explain`](/api#SpeciesDistributionModels.explain-Tuple{SDMensemble}). If an integer `N`, and optionally `threaded` and `rng` is supplied, `MonteCarlo` sampling is used, where `N` is the number of iterations (samples). More samples will result in more accurate results,  but will take more time to compute.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/explain/shapley.jl#L1-L9" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/explain/shapley.jl#L1-L9" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -52,7 +52,7 @@ Generate response curves for `ensemble`.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/interface.jl#L117-L127" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L117-L127" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -85,7 +85,7 @@ Use an `SDMmachine`, or `SDMensemble` to predict habitat suitability for some da
 If `newdata` is a `RasterStack`, the `predict` return a `Raster`; otherwise, return a `DimArray`.   Habitat suitability represented by a floating-point number between 0 and 1.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/interface.jl#L132-L148" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L132-L148" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -120,7 +120,7 @@ julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/collinearity.jl#L21-L43" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/collinearity.jl#L21-L43" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -165,7 +165,7 @@ ensemble = sdm(mydata, models)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/interface.jl#L43-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L43-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -212,7 +212,7 @@ mydata2 = sdmdata([p; a], [trues(4); falses(4)]; resampler = [([1,2],[5,6]), ([3
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/interface.jl#L1-L33" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L1-L33" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -255,7 +255,7 @@ thin(Xoshiro(123), geometries, 1; distance = Euclidean())
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/thin.jl#L1-L31" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/thin.jl#L1-L31" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -288,7 +288,7 @@ This defaults to using auc, log_loss, and kappa. For threshold-dependent measure
 Validation data should be a `Tuple` with presences as the first field and absences as the second.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/ed617fa03530f9d05e6cacc52087699eaa342162/src/interface.jl#L78-L94" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L78-L94" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
