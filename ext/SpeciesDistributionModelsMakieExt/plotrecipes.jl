@@ -1,29 +1,27 @@
 function _model_controls!(fig, ensemble)
-    toggles = [Makie.Toggle(fig, active = true) for i in 1:Base.length(ensemble)]
-    labels = [Makie.Label(fig, String(key)) for key in SDM.model_keys(ensemble)]
+    models = DD.lookup(ensemble, :model)
+    toggles = [Makie.Toggle(fig, active = true) for i in eachindex(models)]
+    labels = [Makie.Label(fig, String(key)) for key in models]
     g = Makie.grid!(hcat(toggles, labels))
     return g, toggles
 end
 
-
-function Makie.boxplot(ev::SDMensembleEvaluation, measure::Symbol)
-    modelnames = collect(Base.string.(model_keys(ev.ensemble)))
+function SDM.boxplot(ev::SDMevaluation, measure::Symbol)
+   modelnames = string.(DD.dims(ev, :model))
     f = Makie.Figure()
     
     for (i, t) in enumerate((:train, :test))
         ax = Makie.Axis(
             f[1,i]; 
             limits = (nothing, nothing, 0, 1),
-            xticks = (1:Base.length(ev), modelnames),
+            xticks = (eachindex(modelnames), modelnames),
             xticklabelrotation = -pi/4,
             title = Base.string(t)
         )
-        y = machine_evaluations(ev)[t][measure]
-        x = mapreduce(vcat, enumerate(ev)) do (i, e)
-            fill(i, Base.length(e))
-        end
-    
-        Makie.boxplot!(ax, x, y)
+        y = ev[dataset = At(t), measure = At(measure)].score
+        x = vec(val.(DD.dims.(DimIndices(y), :model)))
+
+        Makie.boxplot!(ax, x, vec(y))
     end
     return f
 end
@@ -49,23 +47,16 @@ ydata(::Sens, conf_mats) = SDM.sensitivity.(conf_mats)
 ydata(::Spec, conf_mats) = SDM.selectivity.(conf_mats)
 ydata(::TSS, conf_mats) = SDM.kappa.(conf_mats)
 
-
 function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
-    xdata(::Any, conf_mats) = thresholds
+    xdata(_, conf_mats) = thresholds
+    data = sdmdata(ensemble)
+    n_models = length(DD.lookup(ensemble, :model))
 
-    idx_by_model = map(enumerate(ensemble)) do (i, e)
-        fill(i, Base.length(e))
-    end |> NamedTuple{Tuple(model_keys(ensemble))}
-
-    n_models = length(idx_by_model)
-
-    conf_mats = mapreduce(hcat, ensemble) do gr
-        map(gr) do sdm_machine
-            rows = SDM.test_rows(sdm_machine)
-            y_hat = SDM.MLJBase.predict(sdm_machine.machine; rows)
-            y = data(sdm_machine).response[rows]
-            _conf_mats_from_thresholds(SDM.MLJBase.pdf.(y_hat, true), y, thresholds)
-        end
+    conf_mats = map(DD.DimPoints(DD.dims(ensemble, (:model, :fold))), ensemble) do p, mach
+        rows = SDM._getrows(data, :test, p[2])
+        y_hat = SDM.MLJBase.predict(mach; rows)
+        y = data.response[rows]
+        SDM._conf_mats_from_thresholds(SDM.MLJBase.pdf.(y_hat, true), y, thresholds)
     end
 
     # Figure itself
@@ -73,7 +64,8 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
 
     controls = fig[1,2] = GridLayout()
     plots = fig[1,1] = GridLayout()
-    ax = Axis(plots[1,1]; limits = (0, 1.01, 0, 1.01))
+    ax = Axis(plots[1,1]; limits = (0, 1.01, 0, 1.01), 
+        xlabel = "Suitability value", ylabel = "Performance")
     Makie.hidespines!(ax, :t, :r)
 
     funcs = [Sens(),Spec(), ROC(), TSS()]
@@ -94,7 +86,7 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
         return(x, y)
     end
 
-    plot_data_avg = map(eachcol(plot_data_all)) do data
+    plot_data_avg = map(eachslice(plot_data_all; dims = :model)) do data
         x = map(getindex.(data, 1)...) do d...
             Statistics.mean(d)
         end
@@ -104,14 +96,17 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
         return (x, y)
     end
 
-    ls_average = [Makie.lines!(ax, d[1], d[2], color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 3) for (i, d) in enumerate(plot_data_avg)]
+    ls_average = [
+        Makie.lines!(ax, d[1], d[2], color = i, colormap = :turbo, colorrange = (1, n_models), linewidth = 3) for 
+            (i, d) in enumerate(plot_data_avg)
+        ]
     ls_members = [
-        Makie.lines!(ax, plot_data_all[r, c][1], plot_data_all[r, c][2];
-            color = c, colormap = :turbo, colorrange = (1, n_models), linewidth = 1)
-        for r in 1:size(plot_data_all, 1), c in 1:size(plot_data_all, 2)
+        Makie.lines!(ax, plot_data_all[idx][1], plot_data_all[idx][2];
+            color = val(DD.dims(idx, :model)), colormap = :turbo, colorrange = (1, n_models), linewidth = 1)
+        for idx in DD.DimIndices(plot_data_all)
     ]
 
-    map(ls_average, eachcol(ls_members), toggles) do line, lines, toggle
+    map(ls_average, eachslice(ls_members; dims = :model), toggles) do line, lines, toggle
         lines_active = lift((t, t2) -> t & t2, (toggle.active), (all_models_toggle.active))
         on(toggle.active) do active
             Makie.update!(line, visible = active)
@@ -120,12 +115,12 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
             Makie.update!.(lines, visible = active)
         end
     end
-
+    
     return fig 
 end
 
 # Plot output from shapley
-function SDM.interactive_response_curves(expl::SDMensembleExplanation)
+function SDM.interactive_response_curves(expl::SDMexplanation)
     fig = Figure()
     controls = fig[1,2] = GridLayout()
     ax = Axis(fig[1,1], ylabel = "Shapley value", xlabel = "Variable value")

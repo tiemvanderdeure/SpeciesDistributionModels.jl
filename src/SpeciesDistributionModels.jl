@@ -27,18 +27,25 @@ export auc, kappa, sensitivity, selectivity, accuracy,
 # export stubs for extensions
 export interactive_response_curves, interactive_evaluation
 
+# Data handling and types
 include("data_utils.jl")
 include("dimtypes.jl")
+
+# Interface
+include("interface.jl")
+include("extensions.jl")
+
+# Utilities
+include("thin.jl")
 include("collinearity.jl")
+
+# Core functionality
 include("ensemble.jl")
 include("predict.jl")
 include("evaluate.jl")
-include("extensions.jl")
 
+# Explain
 include("explain/explain.jl")
 include("explain/shapley.jl")
-
-include("thin.jl")
-include("interface.jl")
 
 end
