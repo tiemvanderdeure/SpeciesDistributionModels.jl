@@ -10,7 +10,6 @@ makedocs(;
         devurl = "dev",
         devbranch = "main",
     ),
-    warnonly = true
 )
 
 deploydocs(; 
