@@ -122,9 +122,8 @@ macro maybe_threads(flag, expr)
     end |> esc
 end
 
-struct SDMmetadata{X} <: DD.Lookups.AbstractMetadata{nothing, X}
-    sdmdata::SDMdata
-    metadata::X
-end
-SDMmetadata(sdmdata::SDMdata) = SDMmetadata(sdmdata, NamedTuple())
-DD.val(m::SDMmetadata) = m.metadata
+### Resampling
+struct NoResampling <: MLJBase.ResamplingStrategy end
+MLJBase.train_test_pairs(::NoResampling, indices, _)  = [(indices, eltype(indices)[])]## get indices
+
+struct CustomRows <: MLJBase.ResamplingStrategy end

@@ -1,59 +1,6 @@
+# Type definitions are in dimtypes.jl
 const evaluationkeys = (:score, :threshold)
 const ScoreType = NamedTuple{evaluationkeys, Tuple{Float64, Union{Missing, Float64}}}
-
-struct SDMensembleEvaluation{T,N,L,D<:DD.DimStack} <: DD.AbstractDimStack{(:score, :threshold, :ensemble), T, N, L}
-    data::D
-end
-function SDMensembleEvaluation(stack::DD.AbstractDimStack{(:score, :threshold)}, ensemble::SDMensemble)
-    ds = DD.DimStack(
-        (score = stack.score, threshold = stack.threshold, ensemble = ensemble),
-        metadata = DD.metadata(ensemble)
-    )
-    SDMensembleEvaluation(ds, sdmdata(ensemble))
-end
-SDMensembleEvaluation(stack::DD.AbstractDimStack{(:score, :threshold, :ensemble), T, N, L}) where {T,N,L} =
-    SDMensembleEvaluation{T,N,L, typeof(stack)}(stack)
-
-Base.@constprop :aggressive Base.@propagate_inbounds function Base.getindex(ev::SDMensembleEvaluation, key::Symbol)
-    if key === :ensemble
-        SDMensemble(parent(ev)[key])
-    else
-        DD.DimArray(parent(ev)[key], DD.dims(ev), DD.refdims(ev), key, DD.NoMetadata())
-    end
-end
-
-function DD.rebuild(ev::SDMensembleEvaluation; kw...)
-    parent = DD.rebuild(parent(ev); kw...)
-    if keys(parent) === (:score, :threshold, :ensemble)
-        SDMensembleEvaluation(parent)
-    else
-        parent
-    end
-end
-
-DD.parent(s::SDMensembleEvaluation) = getfield(s, :data)
-
-sdmdata(ev::SDMensembleEvaluation) = metadata(ev).sdmdata
-
-for f in [:data, :dims, :refdims, :metadata, :layerdims, :layermetadata]
-    @eval begin
-        DD.$(f)(ds::SDMensembleEvaluation) = DD.$(f)(parent(ds))
-    end
-end
-
-function Base.show(io::IO, mime::MIME"text/plain", ev::SDMensembleEvaluation)
-    meanscores = Statistics.mean(ev.score, dims = :fold)[fold = 1]
-    _, displaywidth = displaysize(io)
-    blockwidth = displaywidth
-    io = IOContext(io, :dim_brackets => false)
-    println(io, "SDMensembleEvaluation with dimensions:")
-    lines, blockwidth = DD.show_main(io, mime, ev)
-    #DD.print_dims_block(io, mime, DD.dims(ev); displaywidth, blockwidth)
-    println(io, "\n\nMean training performance:")
-    DD.print_array(io, mime, meanscores[dataset = DD.At(:train)])
-    println(io, "\n\nMean test performance:")
-    DD.print_array(io, mime, meanscores[dataset = DD.At(:test)])
-end
 
 ## TODO: make this much smoother and more understandable code
 function _getrows(data::SDMdata, set::Symbol, fold)
@@ -127,7 +74,9 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
     end
 
     # pre-allocate the evaluation stack - its layers are `scores` and `thresholds`
-    evaluationstack = DimStack((score = zeros(alldims), threshold = DD.DimArray{Union{Missing, Float64}}(undef, alldims)))
+    evaluationstack = DimStack(
+        (score = zeros(alldims), threshold = DD.DimArray{Union{Missing, Float64}}(undef, alldims));
+        metadata = DD.metadata(ensemble))
     # evaluate - replace with a broadcast_dims! in the future?
     for I in DD.DimIndices(alldims)
         evaluationstack[I] = _apply_measure(
@@ -137,8 +86,7 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
             measures[DD.dims(I, :measure).val]
         )
     end
-    ev = DimStack(merge(evaluationstack, (; ensemble)), metadata = DD.metadata(ensemble))
-    return SDMensembleEvaluation(ev)
+    return SDMevaluation(evaluationstack,ensemble)
 end
 
 function _apply_measure(y_hat::MLJBase.UnivariateFiniteVector, y::MLJBase.CategoricalVector, (thresholds, conf_mats), measure)

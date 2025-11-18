@@ -14,23 +14,21 @@ using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic, pdf
 import DimensionalData: DimArray, DimStack, Dim, broadcast_dims
 
-export SDMensemble, predict, sdm, sdmdata, select, machines, machine_keys,
+export SDMensemble, SDMexplanation, SDMevaluation,
+    predict, sdm, sdmdata, select, machines,
     remove_collinear, thin,
-    explain, variable_importance, ShapleyValues,
-    SDMmachineExplanation, SDMgroupExplanation, SDMensembleExplanation,
-    SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation
+    explain, variable_importance, ShapleyValues
 
 # re-export
 export auc, kappa, sensitivity, selectivity, accuracy,
     Continuous, OrderedFactor, Multiclass, Count,
     StratifiedCV, CV, Holdout, ResamplingStrategy
 
-
-include("data_utils.jl")
-include("resample.jl")
 # export stubs for extensions
 export interactive_response_curves, interactive_evaluation
 
+include("data_utils.jl")
+include("dimtypes.jl")
 include("collinearity.jl")
 include("ensemble.jl")
 include("predict.jl")

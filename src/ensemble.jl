@@ -1,56 +1,4 @@
-struct SDMensemble{N,D,R,A<:AbstractArray{<:Machine},M<:SDMmetadata} <: DD.AbstractDimArray{Machine,N,D,A}
-    data::A
-    dims::D
-    refdims::R
-    name::Symbol
-    metadata::M
-end
-function SDMensemble(machines::A, dims::D, refdims::R, name::Symbol, metadata::M) where {A<:AbstractArray{<:Any, N}, D, R, M} where N
-    SDMensemble{N,D,R,A,M}(machines, dims, refdims, name, metadata) 
-end
-SDMensemble(machines::DD.DimArray{<:Machine}, sdmdata::SDMdata) =
-    SDMensemble(parent(machines), DD.dims(machines), DD.refdims(machines), DD.name(machines), SDMmetadata(sdmdata, NamedTuple()))
-SDMensemble(machines::DD.DimArray{<:Machine}) =
-    SDMensemble(parent(machines), DD.dims(machines), DD.refdims(machines), DD.name(machines), DD.metadata(machines))
-
-DimArray(A::SDMensemble) = DimArray(parent(A), DD.dims(A); refdims = DD.refdims(A), name = DD.name(A))
-function DD.rebuild(A::SDMensemble; data, dims = DD.dims(A), refdims = DD.refdims(A), name = DD.name(A), metadata = DD.metadata(A), kw...)
-    if eltype(data) <: Machine && metadata isa SDMmetadata
-        SDMensemble(data, dims, refdims, name, metadata)
-    else
-        DD.rebuild(DimArray(A); data, dims, refdims, name, metadata, kw...)
-    end
-end
-
-@inline function DD.rebuild(
-    A::SDMensemble, data, dims::Tuple, refdims, name, metadata
-) 
-    SDMensemble(data, dims, refdims, name, metadata)
-end
-
-# easy access to the fields of the type
-sdmdata(s::SDMensemble) = DD.metadata(s).sdmdata
-
-function models(ensemble::SDMensemble)
-    if DD.hasdim(ensemble, :fold)
-        models(view(ensemble, fold = 1))
-    elseif DD.hasdim(ensemble, :model) 
-        getfield.(ensemble, :model)
-    else
-        DimArray([model(first(ensemble))], DD.refdims(ensemble, :model))
-    end
-end
-
-## Show methods
-function Base.show(io::IO, mime::MIME"text/plain", ensemble::SDMensemble)
-    lines, blockwidth = DD.show_main(io, mime, ensemble)
-    # Printing the array data is optional, subtypes can
-    # show other things here instead.
-    ds = displaysize(io)
-    ctx = IOContext(io, :blockwidth => blockwidth, :displaysize => (ds[1] - lines, ds[2]))
-    DD.show_after(ctx, mime, models(ensemble))
-end
-
+# Type definitions are in dimtypes.jl
 function _sdm(
     data::SDMdata,
     models::NamedTuple, 
@@ -82,4 +30,15 @@ function _fit!(e::SDMensemble, threaded::Bool; verbosity)
         MLJBase.fit!(m; rows = sdmdata(e).traintestpairs[d[1]][1], verbosity)
     end
     return e
+end
+
+# Utility function used in show
+function models(ensemble::SDMensemble)
+    if DD.hasdim(ensemble, :fold)
+        models(view(ensemble, fold = 1))
+    elseif DD.hasdim(ensemble, :model) 
+        getfield.(ensemble, :model)
+    else
+        DD.DimVector([first(ensemble).model], DD.refdims(ensemble, :model))
+    end
 end

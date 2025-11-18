@@ -30,15 +30,20 @@ ensemble = sdm(data, (; lm = LinearBinaryClassifier()))
     evaluation2 = SDM.evaluate(ensemble; measures = (; auc = StatisticalMeasures.AreaUnderCurve()))
 
     # check the type
-    @test evaluation isa SDM.SDMensembleEvaluation
+    @test evaluation isa SDM.SDMevaluation
 
     # indexing works
-    @test evaluation[1] isa NamedTuple{(:score, :threshold, :ensemble)}
-    @test evaluation[model = At(:lm), fold = At(1), dataset = At(:train), measure = At(:auc)] isa NamedTuple{(:score, :threshold, :ensemble)}
+    ev1 = evaluation[1]
+    @test ev1 isa NamedTuple{(:score, :threshold)}
+    @test ev1 == evaluation[model=At(:lm), fold=At(1), dataset=At(:train), measure=At(:accuracy)]
 
+    # slicing and rebuilding works
+    ev2 = evaluation[model = 1, fold = 2..3, dataset = At(:train)]
+    
     # dimensions are correct
     @test all(hasdim(evaluation, (:model, :fold, :dataset, :measure)))
     @test dims(evaluation, (:model, :fold)) === dims(ensemble)
+    @test dims(ev2, (:model, :fold)) == dims(sdm(ev2))
 
     @test isequal(lookup(evaluation, :dataset), [:train, :test, :validation])
     @test isequal(lookup(evaluation2, :dataset), [:train, :test])
@@ -56,7 +61,7 @@ end
     # indexing works
     @test expl[1] isa NamedTuple{(:a, :b, :c)}
     @test expl[model = At(:lm), fold = At(1)] === expl[1]
-    expl1 = expl[fold = At([1,2]), model = 1]
+    expl1 = expl[fold = At([1,2]), model = 1] # slicing and rebuilding works
 
     # dimensions are correct
     @test dims(expl) === dims(ensemble)
