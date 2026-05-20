@@ -23,6 +23,4 @@ include("tools.jl")
 include("sdmdata.jl")
 include("fit.jl")
 include("predict.jl")
-
-
-
+include("plotting.jl")

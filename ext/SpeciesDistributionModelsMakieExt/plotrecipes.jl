@@ -18,8 +18,8 @@ function SDM.boxplot(ev::SDMevaluation, measure::Symbol)
             xticklabelrotation = -pi/4,
             title = Base.string(t)
         )
-        y = ev[dataset = At(t), measure = At(measure)].score
-        x = vec(val.(DD.dims.(DimIndices(y), :model)))
+        y = ev[dataset = DD.At(t), measure = DD.At(measure)].score
+        x = vec(DD.val.(DD.dims.(DD.DimIndices(y), :model)))
 
         Makie.boxplot!(ax, x, vec(y))
     end
@@ -102,7 +102,7 @@ function SDM.interactive_evaluation(ensemble; thresholds = 0:0.01:1)
         ]
     ls_members = [
         Makie.lines!(ax, plot_data_all[idx][1], plot_data_all[idx][2];
-            color = val(DD.dims(idx, :model)), colormap = :turbo, colorrange = (1, n_models), linewidth = 1)
+            color = DD.val(DD.dims(idx, :model)), colormap = :turbo, colorrange = (1, n_models), linewidth = 1)
         for idx in DD.DimIndices(plot_data_all)
     ]
 
@@ -125,36 +125,29 @@ function SDM.interactive_response_curves(expl::SDMexplanation)
     controls = fig[1,2] = GridLayout()
     ax = Axis(fig[1,1], ylabel = "Shapley value", xlabel = "Variable value")
 
-    preds = Base.keys(SDM.data(expl))
-    machine_group_indices = mapreduce(vcat, enumerate(expl)) do (i, g)
-        fill(i, length(g))
-    end
+    preds = Base.keys(expl)
+    machine_group_indices = DD.val.(DD.dims.(DD.DimIndices(expl), :model))
 
     var_menu = Makie.Menu(controls[1, 1], options = zip(String.(preds), preds), tellheight = false, valign = :center)
     var = var_menu.selection
     Makie.Label(controls[2, 1], "Select models"; font = :bold)
-    controls[3,1], toggles = _model_controls!(fig, expl.ensemble)
+    controls[3,1], toggles = _model_controls!(fig, sdm(expl))
     any_toggle = lift((t...) -> any(t), [t.active for t in toggles]...)
     Makie.Label(controls[4,1], "Smoothness"; font = :bold)
     span_slider = Makie.Slider(controls[5,1], range = 0:0.01:1, startvalue = 0.5)
 
     # data
-    ys = mapreduce(vcat, expl) do gr_expl
-        map(SDM.machine_explanations(gr_expl)) do me
-            @lift me.values[$var]
-        end
-    end
-
-    xs = @lift SDM.data(expl)[$var]
+    ys = broadcast(x -> (@lift x[$var]), expl)
+    xs = @lift SDM.sdmdata(expl).predictor[$var]
     us = Makie.lift(xs -> range(extrema(xs)...; length = 100), xs)
 
-    scatters = map(ys) do ys
+    scatters = broadcast(ys) do ys
         scatter!(xs, ys, markersize = 3, color = :lightblue) 
     end
 
-    map(machine_group_indices, scatters) do m_idx, scatter
+    map(machine_group_indices, scatters) do m_idx, scatters
         on(toggles[m_idx].active) do active
-            Makie.update!(scatter, visible = active)
+            for sc in scatters Makie.update!(sc, visible = active) end
         end
     end
 
@@ -162,9 +155,7 @@ function SDM.interactive_response_curves(expl::SDMexplanation)
         indices = map(m_idx -> toggles[m_idx].active[], machine_group_indices)
         if any(indices)
             newxs = repeat(xs[], Base.sum(indices))
-            newys = mapreduce(vcat, SDM.machine_explanations(expl)[indices]) do me
-                    me.values[var[]]
-                end
+            newys = reduce(vcat, expl[var[]])
 
             span = span_slider.value[]
             smooth_model = Loess.loess(newxs, newys; span, degree = 2)
