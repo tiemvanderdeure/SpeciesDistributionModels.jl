@@ -78,9 +78,7 @@ end
 """
     evaluate(x; measures, train = true, test = true, [validation])
 
-Evaluate `x`, which could be a SDMmachine, SDMgroup, or SDMensemble, 
-by applying the measures provided to the data used to built an ensemble, 
-and return an evaluation object.
+Evaluate `x`, which should be an `SDMensemble`, by applying the measures provided to the data used to build the ensemble, and return an evaluation object.
 
 ## Keywords
 - `measures` is a `NamedTuple` of measures. The keys are used to identify the measures.
@@ -132,19 +130,19 @@ end
 """
     predict(SDMobject, newdata; clamp = false, threaded = false)
 
-Use an `SDMmachine`, or `SDMensemble` to predict habitat suitability for some data, optionally summarized for the entire ensemble, or for each `SDMgroup`.
+Use an `SDMensemble` to predict habitat suitability for some data. Predictions preserve the ensemble's `:model` and `:fold` dimensions, so the returned result carries the same dimensional metadata as the input.
 
-`newdata` can be either a `RasterStack`, or a Tables.jl.compatible object. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
+`newdata` can be either a `RasterStack`, or a Tables.jl-compatible object. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
 
 ## Keywords
 - `clamp`: if `true`, the predictions are clamped to the interval seen during training of `SDMobject`. Defaults to `false`
 - `threaded`: if `true`, run multithreaded. Defaults to `true`.
-- `reducer`: Optionally provide a `Function` to summarize the output. The function should take an vector of values and return a single value. Typical examples are `Statistics.mean` or `Statistics.median`.
-- `by_group` is set to `true`, the data is reduced for each `SDMgroup`, if it is set to `false` (the default), it reduced across the entire ensemble.
+- `reducer`: optionally provide a `Function` to summarize the output. The function should take a vector of values and return a single value. Typical examples are `Statistics.mean` or `Statistics.median`.
 
 ## Returns
-If `newdata` is a `RasterStack`, the `predict` return a `Raster`; otherwise, return a `DimArray`.  
+If `newdata` is a `RasterStack`, `predict` returns a `Raster`; otherwise, it returns a `DimArray`. In both cases the result preserves the `:model` and `:fold` dimensions of the input ensemble.
 Habitat suitability represented by a floating-point number between 0 and 1.
+
 """
 function predict(e::SDMensemble, d; clamp = false, threaded = false)
     _reformat_and_predict(e, d, clamp, threaded)

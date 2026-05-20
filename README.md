@@ -18,7 +18,7 @@ SpeciesDistributionModels.jl provides a small, consistent interface around commo
 - compute explanations with `explain`, and
 - make predictions to tables or to raster stacks with `predict`.
 
-The package is closely integratd with DimensionalData.jl. Objects such as `SDMensemble`, `SDMevaluation`, and `SDMexplanation` are subtypes of `AbstractDimArray` or `AbstractDimStack`, so that you are never in doubt about what you are fitting, evaluating and predicting.
+The package is closely integrated with DimensionalData.jl. `SDMensemble` is an `AbstractDimArray` subtype with `:model` and `:fold` dimensions, and `SDMevaluation`/`SDMexplanation` are `AbstractDimStack` subtypes built from the same ensemble dimensions. This means fitted results, evaluations, and explanations all preserve dimensional metadata and integrate smoothly with DimensionalData workflows.
 
 Fitting an ensemble is as simple as:
 ```

@@ -83,7 +83,8 @@ ev = SDM.evaluate(ensemble; measures = (; auc, accuracy))
 Next, we the climatic suitability of the species throughout Australia using `SpeciesDistributionModels.predict`. We can specify a `reducer` argument to get a single value, instead of a prediction for each member in the ensemble.
 
 ```@example test
-pred = SDM.predict(ensemble, bio_aus; reducer = mean)
+pred = SDM.predict(ensemble, bio_aus)
+meanpred = dropdims(mean(pred; dims = (:model, :fold)); dims = (:model, :fold))
 plot(pred; colorrange = (0,1))
 ```
 
