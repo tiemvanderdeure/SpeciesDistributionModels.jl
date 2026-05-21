@@ -2,6 +2,10 @@
 
 
 ## Index {#Index}
+- [`SpeciesDistributionModels.SDMensemble`](#SpeciesDistributionModels.SDMensemble)
+- [`SpeciesDistributionModels.SDMevaluation`](#SpeciesDistributionModels.SDMevaluation)
+- [`SpeciesDistributionModels.SDMexplainMethod`](#SpeciesDistributionModels.SDMexplainMethod)
+- [`SpeciesDistributionModels.SDMexplanation`](#SpeciesDistributionModels.SDMexplanation)
 - [`SpeciesDistributionModels.ShapleyValues`](#SpeciesDistributionModels.ShapleyValues)
 - [`SpeciesDistributionModels.evaluate`](#SpeciesDistributionModels.evaluate-Tuple{Any})
 - [`SpeciesDistributionModels.explain`](#SpeciesDistributionModels.explain-Tuple{SDMensemble})
@@ -13,6 +17,52 @@
 
 
 ## Reference - Exported functions {#Reference-Exported-functions}
+<details class='jldocstring custom-block' open>
+<summary><a id='SpeciesDistributionModels.SDMensemble' href='#SpeciesDistributionModels.SDMensemble'><span class="jlbinding">SpeciesDistributionModels.SDMensemble</span></a> <Badge type="info" class="jlObjectType jlType" text="Type" /></summary>
+
+
+
+SDMensemble &lt;: AbstractDimArray
+
+An ensemble of fitted `MLJ` `Machine` objects, returned by the [sdm](/api#SpeciesDistributionModels.sdm-Tuple{Any,%20Any}) function. The ensemble is stored as a `DimArray` with `:model` and `:fold` dimensions, where each element is a fitted `Machine`. The ensemble's metadata includes the original `SDMdata` used to fit the models; use `sdmdata(ensemble)` to access it.
+
+
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/dimtypes.jl#L11-L15" target="_blank" rel="noreferrer">source</a></Badge>
+
+</details>
+
+<details class='jldocstring custom-block' open>
+<summary><a id='SpeciesDistributionModels.SDMevaluation' href='#SpeciesDistributionModels.SDMevaluation'><span class="jlbinding">SpeciesDistributionModels.SDMevaluation</span></a> <Badge type="info" class="jlObjectType jlType" text="Type" /></summary>
+
+
+
+SDMevaluation &lt;: AbstractDimStack
+
+An object containing evaluation results produced from an `SDMensemble`, returned by `SDM.evaluate`. The stack preserves the ensemble's `:model` and `:fold` dimensions and additionally has a `:dataset` dimension with values `:train`, `:test`, and optionally `:validation`, as well as a `:measure` dimension with the names of the evaluation measures used. An `SDMevaluation` has two layers `:score` (the value of the evaluation measure) and `:threshold` (the threshold at which the measure is optimal, for threshold-dependent measures; otherwise `missing`).
+
+Use `sdm(ev)` to retrieve the originating ensemble and `sdmdata(ev)` for the associated training data.
+
+
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/dimtypes.jl#L34-L41" target="_blank" rel="noreferrer">source</a></Badge>
+
+</details>
+
+<details class='jldocstring custom-block' open>
+<summary><a id='SpeciesDistributionModels.SDMexplanation' href='#SpeciesDistributionModels.SDMexplanation'><span class="jlbinding">SpeciesDistributionModels.SDMexplanation</span></a> <Badge type="info" class="jlObjectType jlType" text="Type" /></summary>
+
+
+
+SDMexplanation &lt;: AbstractDimStack
+
+An object that stores model explanation outputs (for example per-feature Shapley values). The stack retains the originating ensemble's `:model` and `:fold` dimensions. The layers correspond to predictor variables the ensemble is trained on.
+
+The `method` field records which explanation algorithm was used.
+
+
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/dimtypes.jl#L56-L62" target="_blank" rel="noreferrer">source</a></Badge>
+
+</details>
+
 <details class='jldocstring custom-block' open>
 <summary><a id='SpeciesDistributionModels.ShapleyValues' href='#SpeciesDistributionModels.ShapleyValues'><span class="jlbinding">SpeciesDistributionModels.ShapleyValues</span></a> <Badge type="info" class="jlObjectType jlType" text="Type" /></summary>
 
@@ -27,7 +77,7 @@ ShapleyValues(N::Integer; threaded = true, rng = Random.GLOBAL_RNG)
 Use to specify use Shapley values as method in [`explain`](/api#SpeciesDistributionModels.explain-Tuple{SDMensemble}). If an integer `N`, and optionally `threaded` and `rng` is supplied, `MonteCarlo` sampling is used, where `N` is the number of iterations (samples). More samples will result in more accurate results,  but will take more time to compute.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/explain/shapley.jl#L1-L9" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/explain/shapley.jl#L1-L9" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -52,7 +102,7 @@ Generate response curves for `ensemble`.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L117-L127" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/interface.jl#L115-L125" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -66,26 +116,24 @@ predict(SDMobject, newdata; clamp = false, threaded = false)
 ```
 
 
-Use an `SDMmachine`, or `SDMensemble` to predict habitat suitability for some data, optionally summarized for the entire ensemble, or for each `SDMgroup`.
+Use an `SDMensemble` to predict habitat suitability for some data. Predictions preserve the ensemble's `:model` and `:fold` dimensions, so the returned result carries the same dimensional metadata as the input.
 
-`newdata` can be either a `RasterStack`, or a Tables.jl.compatible object. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
+`newdata` can be either a `RasterStack`, or a Tables.jl-compatible object. It must have all predictor variables used to train the models in its columns (or layers in case of a RasterStack).
 
 **Keywords**
 - `clamp`: if `true`, the predictions are clamped to the interval seen during training of `SDMobject`. Defaults to `false`
   
 - `threaded`: if `true`, run multithreaded. Defaults to `true`.
   
-- `reducer`: Optionally provide a `Function` to summarize the output. The function should take an vector of values and return a single value. Typical examples are `Statistics.mean` or `Statistics.median`.
-  
-- `by_group` is set to `true`, the data is reduced for each `SDMgroup`, if it is set to `false` (the default), it reduced across the entire ensemble.
+- `reducer`: optionally provide a `Function` to summarize the output. The function should take a vector of values and return a single value. Typical examples are `Statistics.mean` or `Statistics.median`.
   
 
 **Returns**
 
-If `newdata` is a `RasterStack`, the `predict` return a `Raster`; otherwise, return a `DimArray`.   Habitat suitability represented by a floating-point number between 0 and 1.
+If `newdata` is a `RasterStack`, `predict` returns a `Raster`; otherwise, it returns a `DimArray`. In both cases the result preserves the `:model` and `:fold` dimensions of the input ensemble. Habitat suitability represented by a floating-point number between 0 and 1.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L132-L148" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/interface.jl#L130-L146" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -101,7 +149,7 @@ remove_collinear(data; method, silent = false)
 
 Removes strongly correlated variables in `data`, until correlation is below a threshold specified in `method`.
 
-`method` can currently be either `Gvif`, `Vif` or `Pearson`, which use GVIF, VIF, or Pearson&#39;s r, respectively. GVIF and VIF are similar method, but GVIF includes categorical variables whereas VIF ignores them.
+`method` can currently be either `Gvif`, `Vif` or `Pearson`, which use GVIF, VIF, or Pearson's r, respectively. GVIF and VIF are similar method, but GVIF includes categorical variables whereas VIF ignores them.
 
 To run without showing information about collinearity scores, set `silent = true`.
 
@@ -120,7 +168,7 @@ julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/collinearity.jl#L21-L43" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/collinearity.jl#L21-L43" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -165,7 +213,7 @@ ensemble = sdm(mydata, models)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L43-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/interface.jl#L43-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -212,7 +260,7 @@ mydata2 = sdmdata([p; a], [trues(4); falses(4)]; resampler = [([1,2],[5,6]), ([3
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L1-L33" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/interface.jl#L1-L33" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -255,12 +303,26 @@ thin(Xoshiro(123), geometries, 1; distance = Euclidean())
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/thin.jl#L1-L31" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/thin.jl#L1-L31" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
 
 ## Reference - Internal functions {#Reference-Internal-functions}
+<details class='jldocstring custom-block' open>
+<summary><a id='SpeciesDistributionModels.SDMexplainMethod' href='#SpeciesDistributionModels.SDMexplainMethod'><span class="jlbinding">SpeciesDistributionModels.SDMexplainMethod</span></a> <Badge type="info" class="jlObjectType jlType" text="Type" /></summary>
+
+
+
+`SDMexplainMethod`
+
+Abstract marker type for explanation method descriptors. Currently the only method implemented is [ShapleyValues](/api#SpeciesDistributionModels.ShapleyValues).
+
+
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/dimtypes.jl#L49-L53" target="_blank" rel="noreferrer">source</a></Badge>
+
+</details>
+
 <details class='jldocstring custom-block' open>
 <summary><a id='SpeciesDistributionModels.evaluate-Tuple{Any}' href='#SpeciesDistributionModels.evaluate-Tuple{Any}'><span class="jlbinding">SpeciesDistributionModels.evaluate</span></a> <Badge type="info" class="jlObjectType jlMethod" text="Method" /></summary>
 
@@ -271,7 +333,7 @@ evaluate(x; measures, train = true, test = true, [validation])
 ```
 
 
-Evaluate `x`, which could be a SDMmachine, SDMgroup, or SDMensemble,  by applying the measures provided to the data used to built an ensemble,  and return an evaluation object.
+Evaluate `x`, which should be an `SDMensemble`, by applying the measures provided to the data used to build the ensemble, and return an evaluation object.
 
 **Keywords**
 - `measures` is a `NamedTuple` of measures. The keys are used to identify the measures.
@@ -288,7 +350,7 @@ This defaults to using auc, log_loss, and kappa. For threshold-dependent measure
 Validation data should be a `Tuple` with presences as the first field and absences as the second.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/c032ff484ccd83f5a436fce34e2f2ccb9e40c8a9/src/interface.jl#L78-L94" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/d01b92382c1ad8d95156a5b300f4a0fdd492d791/src/interface.jl#L78-L92" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
