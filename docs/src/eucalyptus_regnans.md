@@ -89,7 +89,7 @@ plot(pred; colorrange = (0,1))
 ```
 
 ## Understanding the model
-[SDM.explain](@ref) offers tools to estimate the contribution and response curves for each variable. Currently, the only implemented method is Shapley values from the [Shapley.jl](https://gitlab.com/ExpandingMan/Shapley.jl) package.
+To understand variable importance and responses, use `SDM.explain`, which takes an ensemble as the first argument and a method keyword argument. Currently, the only implemented method is Shapley values from the [Shapley.jl](https://gitlab.com/ExpandingMan/Shapley.jl) package.
 
 ```@example test
 expl = SDM.explain(ensemble; method = ShapleyValues(8))
