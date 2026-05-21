@@ -85,7 +85,7 @@ Next, we the climatic suitability of the species throughout Australia using `Spe
 ```@example test
 pred = SDM.predict(ensemble, bio_aus)
 meanpred = dropdims(mean(pred; dims = (:model, :fold)); dims = (:model, :fold))
-plot(pred; colorrange = (0,1))
+plot(meanpred; colorrange = (0,1))
 ```
 
 ## Understanding the model
