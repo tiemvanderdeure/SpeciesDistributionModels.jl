@@ -3,7 +3,6 @@ import SpeciesDistributionModels as SDM
 import CategoricalArrays as CA
 import StatisticalMeasures
 using StableRNGs, Distributions, Test
-using Makie
 using Rasters
 
 using MLJGLMInterface: LinearBinaryClassifier

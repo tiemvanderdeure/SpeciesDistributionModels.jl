@@ -1,3 +1,5 @@
+using Makie
+
 ensemble = sdm(data, (lm = LinearBinaryClassifier(), maxnet = MaxnetBinaryClassifier()))
 evaluation = SDM.evaluate(ensemble; validation = (presencedata, backgrounddata))
 expl = explain(ensemble; method = ShapleyValues(10; rng))
