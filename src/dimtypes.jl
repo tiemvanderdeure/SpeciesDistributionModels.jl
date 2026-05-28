@@ -9,15 +9,19 @@ DD.val(m::SDMmetadata) = m.metadata
 
 ### SDMensemble
 """
-SDMensemble <: AbstractDimArray
+    SDMensemble <: AbstractDimArray
 
-An ensemble of fitted `MLJ` `Machine` objects, returned by the [sdm](@ref) function. The ensemble is stored as a `DimArray` with `:model` and `:fold` dimensions, where each element is a fitted `Machine`. The ensemble's metadata includes the original `SDMdata` used to fit the models; use `sdmdata(ensemble)` to access it.
+An ensemble of fitted `MLJ` `Machine` objects, returned by the [`sdm`](@ref) function.
+
+The ensemble is stored as a `DimArray` with `:model` and `:fold` dimensions, where each
+ element is a fitted `Machine`. The ensemble's metadata includes the original `SDMdata`
+ used to fit the models; use `sdmdata(ensemble)` to access it.
 """
 struct SDMensemble{T<:Machine,N,D,A<:DD.AbstractDimArray{T,N,D}} <: DD.AbstractDimArray{T,N,D,A}
     parent::A
 end
 SDMensemble(machines::DD.DimArray{<:Machine}, sdmdata::SDMdata) =
-    SDMensemble(DD.rebuild(machines; metadata = SDMmetadata(sdmdata, NamedTuple())))
+    SDMensemble(DD.rebuild(machines; metadata = SDMmetadata(sdmdata, DD.metadata(machines))))
 
 function DD.rebuild(A::SDMensemble; kw...)
     newparent = DD.rebuild(parent(A); kw...)
@@ -32,12 +36,21 @@ DD.rebuild(A::SDMensemble, data, dims::Tuple=DD.dims(A), refdims=DD.refdims(A), 
 
 ### SDMevaluation
 """
-SDMevaluation <: AbstractDimStack
+    SDMevaluation <: AbstractDimStack
 
-An object containing evaluation results produced from an `SDMensemble`, returned by `SDM.evaluate`.
-The stack preserves the ensemble's `:model` and `:fold` dimensions and additionally has a `:dataset` dimension with values `:train`, `:test`, and optionally `:validation`, as well as a `:measure` dimension with the names of the evaluation measures used. An `SDMevaluation` has two layers `:score` (the value of the evaluation measure) and `:threshold` (the threshold at which the measure is optimal, for threshold-dependent measures; otherwise `missing`).
+An object containing evaluation results produced from an [`SDMensemble`](@ref), 
+returned by [`evaluate`](@ref).
 
-Use `sdm(ev)` to retrieve the originating ensemble and `sdmdata(ev)` for the associated training data.
+The stack preserves the ensemble's `:model` and `:fold` dimensions and additionally has
+a `:dataset` dimension with values `:train`, `:test`, and optionally `:validation`, as well
+as a `:measure` dimension with the names of the evaluation measures used. 
+
+An `SDMevaluation` has two layers:
+- `:score`: the value of the evaluation measure
+- `:threshold`: the threshold at which the measure is optimal (for threshold-dependent measures; otherwise `missing`)
+
+Use `sdm(ev)` to retrieve the originating ensemble and `sdmdata(ev)` for the associated
+training data.
 """
 struct SDMevaluation{K,T,N,L,A<:DD.DimStack{K,T,N,L}} <: DD.AbstractDimStack{K,T,N,L}
     parent::A
@@ -47,17 +60,21 @@ end
 ## SDMexplanation
 
 """
-`SDMexplainMethod`
+    SDMexplainMethod
 
-Abstract marker type for explanation method descriptors. Currently the only method implemented is [ShapleyValues](@ref).
+Abstract marker type for explanation method descriptors. Currently the only method
+implemented is [`ShapleyValues`](@ref).
 """
 abstract type SDMexplainMethod end
 
 """
-SDMexplanation <: AbstractDimStack
+    SDMexplanation <: AbstractDimStack
 
-An object that stores model explanation outputs (for example per-feature Shapley values). The stack retains the originating ensemble's `:model` and `:fold` dimensions. The layers correspond to predictor variables the ensemble is trained on.
-    
+An object that stores model explanation outputs (for example per-feature Shapley values).
+
+The stack retains the originating ensemble's `:model` and `:fold` dimensions. The layers
+correspond to predictor variables the ensemble is trained on.
+
 The `method` field records which explanation algorithm was used.
 """
 struct SDMexplanation{K,T,N,L,A<:DD.DimStack{K,T,N,L}} <: DD.AbstractDimStack{K,T,N,L}
@@ -88,7 +105,18 @@ for f in [:layerdims, :layermetadata]
 end
 
 # Accessors
+"""
+    sdm(s::Union{SDMevaluation, SDMexplanation})
+
+Return the originating `SDMensemble` from an evaluation or explanation object.
+"""
 sdm(s::SDMDimStack) = getfield(s, :ensemble)
+
+"""
+    sdmdata(s::Union{SDMensemble, SDMevaluation, SDMexplanation})
+
+Return the `SDMdata` object associated with an ensemble, evaluation, or explanation.
+"""
 sdmdata(s::SDMDimStack) = sdmdata(sdm(s))
 sdmdata(s::SDMensemble) = sdmdata(DD.metadata(s))
 

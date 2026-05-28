@@ -15,7 +15,7 @@ import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabil
 import DimensionalData: DimArray, DimStack, Dim, broadcast_dims
 
 export SDMensemble, SDMexplanation, SDMevaluation,
-    predict, sdm, sdmdata, select, machines,
+    predict, sdm, sdmdata, evaluate,
     remove_collinear, thin,
     explain, variable_importance, ShapleyValues
 

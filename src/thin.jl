@@ -1,36 +1,41 @@
 """
-    thin([rng], x, cutoff; distance = Haversine(), [geometrycolumn])
+    thin([rng], x, cutoff; distance = Haversine(), geometrycolumn = nothing)
 
-    Thin spatial data by removing points that are closer than `cutoff` distance
-    to the nearest other point in the dataset.
+Thin spatial data by removing points that are closer than `cutoff` distance to the nearest
+other point in the dataset.
 
-    ## Arguments
-    - `rng`: a random number generator. The default is `Random.GLOBAL_RNG()`.
-    - `x`: an `AbstractVector` that iterates points, or a table with a `:geometry` column.
-    - `cutoff`: the distance threshold in units of `distance`.
-    ## Keywords
-    - `distance`: the distance metric used to calculate distances between points. The default
-    is `Haversine()`, which uses the Haversine formula to calculate the distance between coordinates in meter units.
-    - `geometrycolumn`: the name of the column in the table that contains the points, if `x` is a table. Usually defaults to `:geometry`.
+## Arguments
+- `rng`: a random number generator. Defaults to `Random.GLOBAL_RNG()`.
+- `x`: an `AbstractVector` that iterates points, or a table with a `:geometry` column.
+- `cutoff`: the distance threshold in units of `distance`.
 
-    ## Example
-    ```jldoctest
-    using SpeciesDistributionModels, Distances
-    # a vector that iteratores points
-    geometries = [(0,0), (1,0), (0,0.000001)]
-    # thin to 1000 meters
-    thin(geometries, 1000)
-    # thin to 1 degree
-    thin(Xoshiro(123), geometries, 1; distance = Euclidean())
+## Keywords
+- `distance`: the distance metric used to calculate distances between points. Defaults to
+    `Haversine()`, which uses the Haversine formula to calculate distance in meters.
+- `geometrycolumn`: the name of the column in the table that contains the points, if `x` is
+    a table. Defaults to `:geometry`.
 
-    # output
-    2-element Vector{Tuple{Int64, Real}}:
-    (0, 0)
-    (1, 0)
-    ```
+## Returns
+- If `x` is a table: a subset of the table with thinned rows
+- If `x` is an `AbstractVector`: a vector of points with nearby points removed
+
+## Example
+```jldoctest; setup = :(using Random; Random.seed!(123))
+using SpeciesDistributionModels, Distances
+# a vector that iterates points
+geometries = [(0,0), (1,0), (0,0.000001)]
+# thin to 1000 meters
+thin(geometries, 1000)
+# thin to 1 degree
+thin(geometries, 1; distance = Euclidean())
+
+# output
+2-element Vector{Tuple{Int64, Real}}:
+(0, 0)
+(1, 0)
+```
 """
 thin(x, cutoff; kw...) = thin(Random.GLOBAL_RNG, x, cutoff; kw...)
-
 function thin(rng::Random.AbstractRNG, x, cutoff; distance = Distances.Haversine(), geometrycolumn = nothing) # = first(GI.geometrycolumn(x))
     if !(x isa AbstractVector{<:GI.NamedTuplePoint}) && Tables.istable(x)
         geomcol = isnothing(geometrycolumn) ? first(GI.geometrycolumns(data)) : geometrycolumn

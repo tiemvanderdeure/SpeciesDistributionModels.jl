@@ -1,16 +1,25 @@
 """
-    ShapleyValues(algorithm::Shapley.Algorithm)
-    ShapleyValues(N::Integer; threaded = true, rng = Random.GLOBAL_RNG)
+    ShapleyValues
 
-Use to specify use Shapley values as method in [`explain`](@ref).
-If an integer `N`, and optionally `threaded` and `rng` is supplied, `MonteCarlo` sampling is used,
-where `N` is the number of iterations (samples). More samples will result in more accurate results, 
-but will take more time to compute.
+A method descriptor for computing Shapley values for model explanations.
+
+Use to specify Shapley values as method in [`explain`](@ref).
+
+## Constructors
+
+    ShapleyValues(algorithm::Shapley.Algorithm)
+    ShapleyValues(N::Integer; threaded = false, rng = Random.GLOBAL_RNG)
+
+If an integer `N` is provided, `MonteCarlo` sampling is used, where `N` is the number
+ of iterations (samples). More samples yield more accurate results but take more time.
+
+## Keywords (for Integer constructor)
+- `threaded`: if `true`, use multithreading. Defaults to `false`.
+- `rng`: random number generator. Defaults to `Random.GLOBAL_RNG`.
 """
 struct ShapleyValues <: SDMexplainMethod
     algorithm::Shapley.Algorithm
 end
-# Default to MonteCarlo algorithm with 100 samples
 function ShapleyValues(N::Integer; threaded = false, rng = Random.GLOBAL_RNG)
     resource = threaded ? CPUThreads() : CPU1()
     algorithm = Shapley.MonteCarlo(resource, N, rng)

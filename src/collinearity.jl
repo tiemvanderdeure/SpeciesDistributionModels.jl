@@ -21,12 +21,23 @@ Pearson(; threshold) = Pearson(threshold)
 """
     remove_collinear(data; method, silent = false)
 
-Removes strongly correlated variables in `data`, until correlation is below a threshold specified in `method`.
+Remove strongly correlated variables in `data` until correlation is below a threshold
+specified in `method`.
 
-`method` can currently be either `Gvif`, `Vif` or `Pearson`, which use GVIF, VIF, or Pearson's r, respectively.
-GVIF and VIF are similar method, but GVIF includes categorical variables whereas VIF ignores them.
+## Arguments
+- `data`: a table-like object with predictor variables
 
-To run without showing information about collinearity scores, set `silent = true`.
+## Keywords
+- `method`: the collinearity method to use. Can be `Gvif`, `Vif`, or `Pearson`, which use
+    GVIF, VIF, or Pearson's r, respectively.
+- `silent`: if `true`, suppress informational messages. Defaults to `false`.
+
+## Returns
+A tuple of `Symbol`s representing the variable names that remain after removing
+strongly correlated variables.
+
+## Notes
+GVIF and VIF are similar methods, but GVIF includes categorical variables whereas VIF ignores them.
 
 ## Example
 ```julia
@@ -39,7 +50,6 @@ julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
 [ Info: All variables are below threshold, returning remaining variables
 (:b, :c)
 ```
-
 """
 function remove_collinear(data; method, silent::Bool = false) 
     schema = Tables.schema(data)
