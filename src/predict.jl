@@ -1,9 +1,14 @@
-function _reformat_and_predict(e, d, clamp, args...)
+function _reformat_and_predict(e, d, clamp, threaded, reducer, dims)
     Tables.istable(d) || throw(ArgumentError("data is a $(typeof(d)), wich is not a Tables.jl-compatible table"))
     data = _select_features(sdmdata(e), d)
-    output = _allocate_prediction(data, DD.dims(d), DD.dims(e))
-    _predict!(output, data, e, args...)
+    data2 = clamp ? data : _clamp!(sdmdata(e), data, d)
+    output = _allocate_prediction(data2, DD.dims(d), DD.dims(e))
+    _predict!(output, data2, e, threaded)
+    return _maybe_reduce(output, reducer, dims)
 end
+
+_maybe_reduce(x, ::Nothing, dims) = x
+_maybe_reduce(x, f, dims) = f(x; dims)
 
 function _select_features(d::SDMdata, x)
     cols = Tables.Columns(x)
@@ -21,6 +26,12 @@ function _select_features(d::SDMdata, rs::Rasters.AbstractRasterStack)
     return rs[predictorkeys(d)]
 end
 
+function _clamp!(d::SDMdata, data::NamedTuple{K}, og_data) where K
+    map(K) do key
+        col = Tables.columnaccess(og_data) ? copy(data[key]) : data[key] # if data is a columntable, we need to copy to avoid mutating the original data
+        clamp!(col, extrema(d.predictor[key])...)
+    end |> NamedTuple{K}
+end
 _allocate_prediction(data, ::Nothing, ::Nothing) = _allocate_prediction(data, (Dim{:row}(1:Tables.rowcount(data)),))
 _allocate_prediction(data, ::Nothing, ensdims) = _allocate_prediction(data, (Dim{:row}(1:Tables.rowcount(data)), ensdims...))
 _allocate_prediction(data, dims, ensdims::Nothing) = _allocate_prediction(data, dims)
