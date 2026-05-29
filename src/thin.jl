@@ -23,16 +23,16 @@ other point in the dataset.
 ```jldoctest; setup = :(using Random; Random.seed!(123))
 using SpeciesDistributionModels, Distances
 # a vector that iterates points
-geometries = [(0,0), (1,0), (0,0.000001)]
+geometries = [(0.0,0.0), (1.0,0.0), (0.0,0.01)]
 # thin to 1000 meters
 thin(geometries, 1000)
 # thin to 1 degree
 thin(geometries, 1; distance = Euclidean())
 
 # output
-2-element Vector{Tuple{Int64, Real}}:
-(0, 0)
-(1, 0)
+2-element Vector{Tuple{Float64, Float64}}:
+ (0.0, 0.0)
+ (1.0, 0.0)
 ```
 """
 thin(x, cutoff; kw...) = thin(Random.GLOBAL_RNG, x, cutoff; kw...)
