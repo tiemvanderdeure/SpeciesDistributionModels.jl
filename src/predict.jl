@@ -7,7 +7,7 @@ function _reformat_and_predict(e, d, clamp, threaded, reducer, dims)
 end
 
 _maybe_reduce(x, ::Nothing, dims) = x
-_maybe_reduce(x, f, dims) = f(x; dims)
+_maybe_reduce(x, f, dims) = dropdims(f(x; dims); dims)
 
 function _select_features(d::SDMdata, x, clamp)
     cols = Tables.Columns(x)
