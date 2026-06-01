@@ -7,6 +7,7 @@ import GeoInterface as GI
 import DimensionalData as DD
 import Rasters as RA
 import ConstructionBase
+import Compat: @compat
 
 using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
 using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase
@@ -15,9 +16,11 @@ import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabil
 import DimensionalData: DimArray, DimStack, Dim, broadcast_dims
 
 export SDMensemble, SDMexplanation, SDMevaluation,
-    predict, sdm, sdmdata, evaluate,
+    sdm, sdmdata,
     remove_collinear, thin,
     explain, variable_importance, ShapleyValues
+
+@compat public predict, evaluate
 
 # re-export
 export auc, kappa, sensitivity, selectivity, accuracy,

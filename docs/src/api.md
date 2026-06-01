@@ -14,8 +14,15 @@ Modules = [SpeciesDistributionModels]
 Private = false
 ```
 
+## Reference - Unexported public functions
+These functions are unexported to avoid confusion with functions with the same name in MLJ and other packages.
+```@docs
+    SpeciesDistributionModels.predict
+    SpeciesDistributionModels.evaluate
+    SpeciesDistributionModels.boxplot
+```
+
 ## Reference - Internal functions
-```@autodocs
-Modules = [SpeciesDistributionModels]
-Public = false
+```@docs
+    SpeciesDistributionModels.SDMexplainMethod
 ```

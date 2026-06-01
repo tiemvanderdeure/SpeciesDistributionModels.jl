@@ -13,11 +13,11 @@ In this package, the main data handling tool is the [sdmdata](@ref) function, wh
 
 Next, this object and a `NamedTuple` of models is passed to the [sdm](@ref) function to fit the models. The models can be any object that implements the MLJ interface and is compatible with binary categorical data. See the [MLJ model registry](https://juliaai.github.io/MLJ.jl/dev/model_browser/#Classification) for a list of available models.
 
-A fit ensemble can then be passed to functions like `SDM.evaluate` and `SDM.predict`.
+A fit ensemble can then be passed to functions like [`SpeciesDistributionModels.evaluate`](@ref) and [`SpeciesDistributionModels.predict`](@ref).
 
 ## Dimensional types
 Most main objects in this package are built on DimensionalData.jl. [sdm](@ref) returns an [SDMensemble](@ref), which is an `AbstractDimArray` subtype with `:model` and `:fold` dimensions. It is thus easy to understand what `machine`s (from MLJ) each fit ensemble contains, or to subset an ensemble.
 
-Similarly `SDM.evalute` returns [`SDMevaluation`](@ref) and `SDM.explain` returns [`SDMexplanation`](@ref), which both are `AbstractDimStack` subtypes that preserve the same `:model` and `:fold` dims.
+Similarly the (unexported, but public) function `SDM.evaluate` returns [`SDMevaluation`](@ref) and [`explain`](@ref) returns [`SDMexplanation`](@ref), which both are `AbstractDimStack` subtypes that preserve the same `:model` and `:fold` dims.
 
 `SDM.predict` returns a DimArray or Raster, where dimensions are again preserved. Existing functionality from DimensionalData can then be used to summarize outputs. For instance, the mean suitability predicted can be generated with `mean(x; dims = (:model, :fold))`.

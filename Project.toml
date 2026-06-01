@@ -5,6 +5,7 @@ authors = ["Tiem van der Deure <tvd@sund.ku.dk>", "Rafael Schouten <rafaelschout
 
 [deps]
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ComputationalResources = "ed09eef8-17a6-5b46-8889-db040fac31e3"
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
@@ -35,6 +36,7 @@ SpeciesDistributionModelsMakieExt = "Makie"
 
 [compat]
 CategoricalArrays = "0.10"
+Compat = "4.18.1"
 ComputationalResources = "0.3"
 ConstructionBase = "1"
 DimensionalData = "0.29"
