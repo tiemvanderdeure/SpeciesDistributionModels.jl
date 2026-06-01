@@ -3,26 +3,36 @@ DocTestSetup= quote
 using SpeciesDistributionModels
 end
 ```
-## Index
-```@index
-Modules = [SpeciesDistributionModels]
-```
 
-## Reference - Exported functions
-```@autodocs
-Modules = [SpeciesDistributionModels]
-Private = false
-```
-
-## Reference - Unexported public functions
-These functions are unexported to avoid confusion with functions with the same name in MLJ and other packages.
+## Basic workflow
 ```@docs
-    SpeciesDistributionModels.predict
+    sdmdata
+    sdm
     SpeciesDistributionModels.evaluate
+    SpeciesDistributionModels.predict
+    explain
+```
+
+## Utility
+```@docs
+    variable_importance
+    thin
+    remove_collinear
+```
+
+## Plotting
+```@docs
+    interactive_response_curves
+    interactive_evaluation
     SpeciesDistributionModels.boxplot
 ```
 
-## Reference - Internal functions
+## Types
 ```@docs
+    SpeciesDistributionModels.SDMdata
+    SDMensemble
+    SDMevaluation
+    SDMexplanation
+    ShapleyValues
     SpeciesDistributionModels.SDMexplainMethod
 ```

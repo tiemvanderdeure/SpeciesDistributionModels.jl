@@ -5,7 +5,13 @@ function boolean_categorical(A::BitArray{N}) where N
 end
 boolean_categorical(A::AbstractVector{Bool}) = boolean_categorical(BitArray(A))
 
+"""
+    SDMdata
+    A struct to hold data for species distribution modeling. Contains the predictor variables, 
+        response variable, geometry (if available), and resampling information.
 
+    See [`sdmdata`](@ref).
+"""
 struct SDMdata{K}
     predictor::NamedTuple
     response::CategoricalArrays.CategoricalArray
