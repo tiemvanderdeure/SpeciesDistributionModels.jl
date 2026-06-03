@@ -5,7 +5,13 @@ function boolean_categorical(A::BitArray{N}) where N
 end
 boolean_categorical(A::AbstractVector{Bool}) = boolean_categorical(BitArray(A))
 
+"""
+    SDMdata
+    A struct to hold data for species distribution modeling. Contains the predictor variables, 
+        response variable, geometry (if available), and resampling information.
 
+    See [`sdmdata`](@ref).
+"""
 struct SDMdata{K}
     predictor::NamedTuple
     response::CategoricalArrays.CategoricalArray
@@ -45,7 +51,6 @@ function Base.show(io::IO, mime::MIME"text/plain", data::SDMdata{K}) where K
     end
 end
 
-
 _gettrainrows(d::SDMdata, i) = d.traintestpairs[i][1]
 _gettestrows(d::SDMdata, i) = d.traintestpairs[i][2]
 predictor(d::SDMdata) = d.predictor
@@ -67,7 +72,8 @@ function _sdmdata(presences, absences, resampler, predictorkeys)
         predictorkeys = Tuple(Base.intersect(keys(p_columns), keys(a_columns)))
         length(predictorkeys) > 0 || throw(ArgumentError("Presence and absence data have no common variable names - can't fit the ensemble."))
     else
-        if haskey(p_columns, :geometry) && haskey(a_columns, :geometry)
+        # manually add geometry in this step to make sure this information is preserved.
+        if haskey(p_columns, :geometry) && haskey(a_columns, :geometry) && !(:geometry in predictorkeys)
             predictorkeys = (predictorkeys..., :geometry)
         end
     end
@@ -75,16 +81,16 @@ function _sdmdata(presences, absences, resampler, predictorkeys)
     _sdmdata(X, y, resampler)
 end
 # in case input is a table with bools for presence/absence
-function _sdmdata(X, response::BitVector, resampler, predictorkeys)
+function _sdmdata(X, response::AbstractVector{Bool}, resampler, predictorkeys)
     Tables.istable(X) || throw(ArgumentError("X must be a Tables.jl-compatible table"))
     _sdmdata(Tables.columntable(X), response, resampler, predictorkeys)
 end
-_sdmdata(X::Tables.ColumnTable, response::BitVector, resampler, ::Nothing) = 
+_sdmdata(X::Tables.ColumnTable, response::AbstractVector{Bool}, resampler, ::Nothing) = 
     _sdmdata(X, response, resampler, Tables.columnnames(X))
-function _sdmdata(X::Tables.ColumnTable, y::BitVector, resampler, predictorkeys::Tuple)
+function _sdmdata(X::Tables.ColumnTable, y::AbstractVector{Bool}, resampler, predictorkeys::Tuple)
     Tables.rowcount(X) == length(y) || error("Number of rows in predictors and response do not match")
-    predictorkeys = haskey(X, :geometry) ? (predictorkeys..., :geometry) : predictorkeys
-    _sdmdata(X[predictorkeys], boolean_categorical(y), resampler)
+    keys = haskey(X, :geometry) ? unique((predictorkeys..., :geometry)) : predictorkeys
+    _sdmdata(X[keys], boolean_categorical(y), resampler)
 end
 function _sdmdata(
     X::Tables.ColumnTable, 
@@ -112,8 +118,18 @@ function _predictor_response_from_presence_absence(presences, absences, predicto
     return (X, y)
 end
 
+macro maybe_threads(flag, expr)
+    quote
+        if $(flag)
+            Threads.@threads $expr
+        else
+            $expr
+        end
+    end |> esc
+end
 
-cpu_backend(threaded) = threaded ? CPUThreads() : CPU1()
-_map(::CPU1) = Base.map
-_map(::CPUThreads) = ThreadsX.map
+### Resampling
+struct NoResampling <: MLJBase.ResamplingStrategy end
+MLJBase.train_test_pairs(::NoResampling, indices, _)  = [(indices, eltype(indices)[])]## get indices
 
+## TODO: Add a resampling strategy to allow just passing in a vector of indices

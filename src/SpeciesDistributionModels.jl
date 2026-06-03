@@ -4,38 +4,51 @@ import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Rand
 import MLJBase, StatisticalMeasures, CategoricalArrays
 import GLM, PrettyTables, Rasters, Shapley, Loess, Distances
 import GeoInterface as GI
+import DimensionalData as DD
+import Rasters as RA
 import ConstructionBase
+import Compat: @compat
 
-using Rasters: Raster, RasterStack, Band, DD
 using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
 using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic, pdf
+import DimensionalData: DimArray, DimStack, Dim, broadcast_dims
 
-export SDMensemble, predict, sdm, sdmdata, select, machines, machine_keys,
+export SDMensemble, SDMexplanation, SDMevaluation,
+    sdm, sdmdata,
     remove_collinear, thin,
-    explain, variable_importance, ShapleyValues,
-    SDMmachineExplanation, SDMgroupExplanation, SDMensembleExplanation,
-    SDMmachineEvaluation, SDMgroupEvaluation, SDMensembleEvaluation
+    explain, variable_importance, ShapleyValues
+
+@compat public predict, evaluate
 
 # re-export
 export auc, kappa, sensitivity, selectivity, accuracy,
     Continuous, OrderedFactor, Multiclass, Count,
     StratifiedCV, CV, Holdout, ResamplingStrategy
-#include("learningnetwork.jl")
-include("data_utils.jl")
-include("resample.jl")
+
 # export stubs for extensions
 export interactive_response_curves, interactive_evaluation
 
-include("collinearity.jl")
-include("ensemble.jl")
-include("predict.jl")
-include("explain/explain.jl")
-include("explain/shapley.jl")
-include("evaluate.jl")
+# Data handling and types
+include("data_utils.jl")
+include("dimtypes.jl")
+
+# Interface
 include("interface.jl")
 include("extensions.jl")
+
+# Utilities
 include("thin.jl")
+include("collinearity.jl")
+
+# Core functionality
+include("ensemble.jl")
+include("predict.jl")
+include("evaluate.jl")
+
+# Explain
+include("explain/explain.jl")
+include("explain/shapley.jl")
 
 end

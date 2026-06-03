@@ -3,19 +3,36 @@ DocTestSetup= quote
 using SpeciesDistributionModels
 end
 ```
-## Index
-```@index
-Modules = [SpeciesDistributionModels]
+
+## Basic workflow
+```@docs
+    sdmdata
+    sdm
+    SpeciesDistributionModels.evaluate
+    SpeciesDistributionModels.predict
+    explain
 ```
 
-## Reference - Exported functions
-```@autodocs
-Modules = [SpeciesDistributionModels]
-Private = false
+## Utility
+```@docs
+    variable_importance
+    thin
+    remove_collinear
 ```
 
-## Reference - Internal functions
-```@autodocs
-Modules = [SpeciesDistributionModels]
-Public = false
+## Plotting
+```@docs
+    interactive_response_curves
+    interactive_evaluation
+    SpeciesDistributionModels.boxplot
+```
+
+## Types
+```@docs
+    SpeciesDistributionModels.SDMdata
+    SDMensemble
+    SDMevaluation
+    SDMexplanation
+    ShapleyValues
+    SpeciesDistributionModels.SDMexplainMethod
 ```

@@ -2,7 +2,7 @@
 This example fits and projects species distribution models for the tree species _Eucaplytus regnans_ from scratch.
 
 ## Environmental data
-We start by downloading environmental data. We use the [Rasters](www.github.com/rafaqz/Rasters.jl) package to handle raster data, and RasterDataSources.jl to automatically download Worldclim data.
+We start by downloading environmental data. We use the [Rasters](https://github.com/rafaqz/Rasters.jl) package to handle raster data, and RasterDataSources.jl to automatically download Worldclim data.
 
 In this example, we just download bioclimatic variables 1 and 12 (annual mean temperature and annual mean precipitation). We then mask to the country borders of Australia.
 
@@ -22,7 +22,7 @@ Rasters.rplot(bio_aus)
 ```
 
 ## Occurrence data
-Next, we use [GBIF2.jl](www.github.com/rafaqz/GBIF2.jl) to download occurrence records for this species. We use the [thin](@ref) function in this package to weed out occurrences that are very close to each other, using a cut-off of 5km.
+Next, we use [GBIF2.jl](https://github.com/rafaqz/GBIF2.jl) to download occurrence records for this species. We use the [thin](@ref) function in this package to weed out occurrences that are very close to each other, using a cut-off of 5km.
 
 ```@example test
 using GBIF2, SpeciesDistributionModels
@@ -80,7 +80,9 @@ ev = SDM.evaluate(ensemble; measures = (; auc, accuracy))
 ```
 
 ## Predicting
-Next, we the climatic suitability of the species throughout Australia using `SpeciesDistributionModels.predict`. We can specify a `reducer` argument to get a single value, instead of a prediction for each member in the ensemble.
+Next, we predict climatic suitability of the species throughout Australia using `SpeciesDistributionModels.predict`. 
+By specifying the `reducer` argument, only one value is returned for each grid cell. By default, the dimensions of
+the ensemble are retained and the predicted value for each ensemble member is 
 
 ```@example test
 pred = SDM.predict(ensemble, bio_aus; reducer = mean)
@@ -88,7 +90,7 @@ plot(pred; colorrange = (0,1))
 ```
 
 ## Understanding the model
-[SDM.explain](@ref) offers tools to estimate the contribution and response curves for each variable. Currently, the only implemented method is Shapley values from the [Shapley.jl](www.gitlab.com/ExpandingMan/Shapley.jl) package.
+To understand variable importance and responses, use `SDM.explain`, which takes an ensemble as the first argument and a method keyword argument. Currently, the only implemented method is Shapley values from the [Shapley.jl](https://gitlab.com/ExpandingMan/Shapley.jl) package.
 
 ```@example test
 expl = SDM.explain(ensemble; method = ShapleyValues(8))
