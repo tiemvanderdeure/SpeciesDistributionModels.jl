@@ -52,7 +52,7 @@ An `SDMevaluation` has two layers:
 Use `sdm(ev)` to retrieve the originating ensemble and `sdmdata(ev)` for the associated
 training data.
 """
-struct SDMevaluation{K,T,N,L,A<:DD.DimStack{K,T,N,L}} <: DD.AbstractDimStack{K,T,N,L}
+struct SDMevaluation{K,T,N,L,D,A<:DD.DimStack{K,T,N,L,D}} <: DD.AbstractDimStack{K,T,N,L,D}
     parent::A
     ensemble::SDMensemble
 end
@@ -77,7 +77,7 @@ correspond to predictor variables the ensemble is trained on.
 
 The `method` field records which explanation algorithm was used.
 """
-struct SDMexplanation{K,T,N,L,A<:DD.DimStack{K,T,N,L}} <: DD.AbstractDimStack{K,T,N,L}
+struct SDMexplanation{K,T,N,L,D,A<:DD.DimStack{K,T,N,L,D}} <: DD.AbstractDimStack{K,T,N,L,D}
     parent::A
     ensemble::SDMensemble
     method::SDMexplainMethod
