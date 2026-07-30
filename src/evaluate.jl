@@ -62,9 +62,9 @@ function _evaluate(ensemble::SDMensemble, measures::NamedTuple, train::Bool, tes
     end
 
     # if any are literal targets (threshold-dependent), compute the confusion matrices outside the loop
-    anyliteral = any(map(m -> StatisticalMeasuresBase.kind_of_proxy(m) isa StatisticalMeasures.LearnAPI.LiteralTarget, measures))
+    anypoint = any(map(m -> StatisticalMeasuresBase.kind_of_proxy(m) isa StatisticalMeasures.LearnAPI.Point, measures))
     thresholds_confmats = broadcast_dims(predictions, y) do p, y
-        if anyliteral
+        if anypoint
             scores = pdf.(p, true)
             thresholds = unique(scores)
             (thresholds, _conf_mats_from_thresholds(scores, y, thresholds))
