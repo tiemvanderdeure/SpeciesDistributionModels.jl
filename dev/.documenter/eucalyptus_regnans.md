@@ -1,3 +1,5 @@
+---
+---
 
 # Example of a full species distribution modelling workflow {#Example-of-a-full-species-distribution-modelling-workflow}
 
@@ -221,8 +223,7 @@ variable_importance(expl)
 
 
 ```ansi
-(bio1 = 0.2917428592905032,
- bio12 = 0.08045275850100682,)
+(bio1 = 0.2917428592905032, bio12 = 0.08045275850100682)
 ```
 
 

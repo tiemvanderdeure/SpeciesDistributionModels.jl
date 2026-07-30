@@ -2,7 +2,6 @@
 layout: home
 ---
 
-
 # SpeciesDistributionModels {#SpeciesDistributionModels}
 
 Documentation for [SpeciesDistributionModels](https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl).

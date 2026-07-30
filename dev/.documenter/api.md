@@ -1,3 +1,5 @@
+---
+---
 
 
 
@@ -15,7 +17,7 @@ sdmdata(s::Union{SDMensemble, SDMevaluation, SDMexplanation})
 Return the `SDMdata` object associated with an ensemble, evaluation, or explanation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/dimtypes.jl#L115-L119" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/dimtypes.jl#L115-L119" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -76,7 +78,7 @@ Also contains geometry data
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/interface.jl#L1-L56" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/interface.jl#L1-L56" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -93,7 +95,7 @@ sdm(s::Union{SDMevaluation, SDMexplanation})
 Return the originating `SDMensemble` from an evaluation or explanation object.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/dimtypes.jl#L108-L112" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/dimtypes.jl#L108-L112" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -140,7 +142,7 @@ ensemble = sdm(mydata, models)
 See also: [`SDMensemble`](/api#SpeciesDistributionModels.SDMensemble), [`sdmdata`](/api#SpeciesDistributionModels.sdmdata), [`evaluate`](/api#SpeciesDistributionModels.evaluate).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/interface.jl#L66-L97" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/interface.jl#L66-L97" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -182,7 +184,7 @@ eval_results = evaluate(ensemble)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/interface.jl#L108-L137" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/interface.jl#L108-L137" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -235,7 +237,7 @@ preds = predict(ensemble, presences)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/interface.jl#L185-L224" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/interface.jl#L185-L224" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -274,7 +276,7 @@ expl = explain(ensemble; method = ShapleyValues(100))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/interface.jl#L160-L180" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/interface.jl#L160-L180" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -309,7 +311,7 @@ vi = variable_importance(expl)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/explain/explain.jl#L1-L19" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/explain/explain.jl#L1-L19" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -364,7 +366,7 @@ thin(geometries, 1; distance = Euclidean())
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/thin.jl#L1-L37" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/thin.jl#L1-L37" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -413,7 +415,7 @@ julia> SDM.remove_collinear(mydata; method = SDM.Vif(10))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/collinearity.jl#L21-L53" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/collinearity.jl#L21-L53" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -432,7 +434,7 @@ interactive_response_curves
 Interactive response curve visualization. Requires Makie extension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/extensions.jl#L8-L12" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/extensions.jl#L8-L12" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -449,7 +451,7 @@ interactive_evaluation
 Interactive evaluation visualization for SDM results. Requires Makie extension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/extensions.jl#L1-L5" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/extensions.jl#L1-L5" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -466,7 +468,7 @@ boxplot
 Create a boxplot visualization. Requires Makie extension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/extensions.jl#L15-L19" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/extensions.jl#L15-L19" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -487,7 +489,7 @@ See [`sdmdata`](@ref).
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/data_utils.jl#L8-L14" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/data_utils.jl#L8-L14" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -506,7 +508,7 @@ An ensemble of fitted `MLJ` `Machine` objects, returned by the [`sdm`](/api#Spec
 The ensemble is stored as a `DimArray` with `:model` and `:fold` dimensions, where each  element is a fitted `Machine`. The ensemble's metadata includes the original `SDMdata`  used to fit the models; use `sdmdata(ensemble)` to access it.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/dimtypes.jl#L11-L19" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/dimtypes.jl#L11-L19" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -533,7 +535,7 @@ An `SDMevaluation` has two layers:
 Use `sdm(ev)` to retrieve the originating ensemble and `sdmdata(ev)` for the associated training data.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/dimtypes.jl#L38-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/dimtypes.jl#L38-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -554,7 +556,7 @@ The stack retains the originating ensemble's `:model` and `:fold` dimensions. Th
 The `method` field records which explanation algorithm was used.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/dimtypes.jl#L70-L79" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/dimtypes.jl#L70-L79" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -589,7 +591,7 @@ If an integer `N` is provided, `MonteCarlo` sampling is used, where `N` is the n
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/explain/shapley.jl#L1-L19" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/explain/shapley.jl#L1-L19" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -606,7 +608,7 @@ SDMexplainMethod
 Abstract marker type for explanation method descriptors. Currently the only method implemented is [`ShapleyValues`](/api#SpeciesDistributionModels.ShapleyValues).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/5be30dea660665ebae390c77ffc4d357bf22dbb1/src/dimtypes.jl#L62-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/tiemvanderdeure/SpeciesDistributionModels.jl/blob/957d858a9011f1ee44c4be729a3792eb3cd39bdc/src/dimtypes.jl#L62-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

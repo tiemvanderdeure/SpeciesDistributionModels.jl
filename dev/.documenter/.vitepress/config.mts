@@ -11,7 +11,8 @@ export default defineConfig({
   lastUpdated: true,
   cleanUrls: true,
   outDir: '../1', // This is required for MarkdownVitepress to work correctly...
-  head: [['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }]],
+  head: [
+    ['meta', { name: 'robots', content: 'noindex, nofollow' }],['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }]],
   ignoreDeadLinks: true,
 
   markdown: {
