@@ -1,7 +1,7 @@
 module SpeciesDistributionModels
 
-import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random, ThreadsX
-import MLJBase, StatisticalMeasures, CategoricalArrays, LearnAPI
+import Tables, StatsBase, Statistics, StatsAPI, StatsModels, LinearAlgebra, Random
+import MLJBase, StatisticalMeasures, CategoricalArrays, LearnAPI, CategoricalDistributions
 import GLM, PrettyTables, Rasters, Shapley, Loess, Distances
 import GeoInterface as GI
 import DimensionalData as DD
@@ -9,7 +9,7 @@ import Rasters as RA
 import ConstructionBase
 import Compat: @compat
 
-using ComputationalResources: CPU1, CPUThreads, AbstractCPU, CPUProcesses
+using ComputationalResources: CPU1, CPUThreads
 using StatisticalMeasures: auc, kappa, sensitivity, selectivity, accuracy, StatisticalMeasuresBase
 using ScientificTypesBase: Continuous, OrderedFactor, Multiclass, Count
 import MLJBase: StratifiedCV, CV, Holdout, ResamplingStrategy, Machine, Probabilistic, pdf
