@@ -38,8 +38,8 @@ function Base.show(io::IO, mime::MIME"text/plain", data::SDMdata{K}) where K
     n_presences = length.(getindex.(traintestpairs(data), 1))
     n_absences = length.(getindex.(traintestpairs(data), 2))
     table_cols = hcat(1:nfolds(data), n_presences, n_absences)
-    header = (["fold", "# train", "# test"])
-    PrettyTables.pretty_table(io, table_cols; header = header)
+    column_labels = (["fold", "# train", "# test"])
+    PrettyTables.pretty_table(io, table_cols; column_labels)
 
     printstyled(io, "Predictor variables: \n", bold = true)
     Base.show(io, mime, MLJBase.schema(predictor(data)))
