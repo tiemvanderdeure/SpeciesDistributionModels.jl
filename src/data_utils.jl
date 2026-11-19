@@ -33,7 +33,11 @@ function Base.show(io::IO, mime::MIME"text/plain", data::SDMdata{K}) where K
     print(io, " absence points. \n \n")
 
     printstyled(io, "Resampling: \n", bold = true)
-    println(io, "Data is divided into $(nfolds(data)) folds using resampling strategy $(resampler(data)).")
+    if isnothing(resampler(data))
+        println(io, "Data is divided into $(nfolds(data)) folds using user-provided train-test pairs.")
+    else
+        println(io, "Data is divided into $(nfolds(data)) folds using resampling strategy $(resampler(data)).")
+    end
 
     n_presences = length.(getindex.(traintestpairs(data), 1))
     n_absences = length.(getindex.(traintestpairs(data), 2))
@@ -104,6 +108,22 @@ function _sdmdata(
     X = Base.structdiff(X, NamedTuple{(:geometry,)})
     SDMdata(X, y, geometries, traintestpairs, resampler)
 end
+# user-supplied (train, test) row indices, e.g. precomputed spatial folds
+function _sdmdata(
+    X::Tables.ColumnTable,
+    y::BooleanCategorical,
+    traintestpairs::MLJBase.TrainTestPairs,
+)
+    isempty(traintestpairs) && throw(ArgumentError("`resampler` is an empty collection of train-test pairs"))
+    n = length(y)
+    for (i, (train, test)) in enumerate(traintestpairs)
+        all(r -> 1 <= r <= n, train) && all(r -> 1 <= r <= n, test) ||
+            throw(ArgumentError("Train-test pair $i has row indices outside 1:$n"))
+    end
+    geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
+    X = Base.structdiff(X, NamedTuple{(:geometry,)})
+    SDMdata(X, y, geometries, collect(traintestpairs), nothing)
+end
 
 # Convert presence/absence data to predictor-response format. Used for SDMdata and in evaluate
 function _predictor_response_from_presence_absence(presences, absences, predictorkeys::NTuple{<:Any, <:Symbol})
@@ -131,5 +151,3 @@ end
 ### Resampling
 struct NoResampling <: MLJBase.ResamplingStrategy end
 MLJBase.train_test_pairs(::NoResampling, indices, _)  = [(indices, eltype(indices)[])]## get indices
-
-## TODO: Add a resampling strategy to allow just passing in a vector of indices
