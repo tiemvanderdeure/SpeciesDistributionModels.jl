@@ -21,6 +21,14 @@
 
     @test isequal(SDM.models(ensemble), collect(models))
     @test SDM.models(ensemble) isa DimVector
+
+    # each machine is trained on the training rows of its own fold
+    for threaded in (false, true)
+        e = sdm(data, models; threaded)
+        for m in lookup(e, :model), f in lookup(e, :fold)
+            @test e[model = At(m), fold = At(f)].old_rows == data.traintestpairs[f][1]
+        end
+    end
 end
 
 ensemble = sdm(data, (; lm = LinearBinaryClassifier()))
