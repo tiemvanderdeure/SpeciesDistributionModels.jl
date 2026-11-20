@@ -26,8 +26,11 @@ function _initialize_ensemble(data, models::NamedTuple, cache, scitype_check_lev
 end
 
 function _fit!(e::SDMensemble, threaded::Bool; verbosity)
-    @maybe_threads threaded for (m, d) in zip(e, DD.DimPoints(DD.dims(e, (:fold, :model))))
-        MLJBase.fit!(m; rows = sdmdata(e).traintestpairs[d[1]][1], verbosity)
+    pairs = sdmdata(e).traintestpairs
+    folds = DD.lookup(e, :fold)
+    @maybe_threads threaded for idx in DD.DimIndices(e) # iterate over indices to fit each machine
+        fold = folds[DD.val(DD.dims(idx, :fold))] # get the fold number for this index
+        MLJBase.fit!(e[idx]; rows = pairs[fold][1], verbosity)
     end
     return e
 end
