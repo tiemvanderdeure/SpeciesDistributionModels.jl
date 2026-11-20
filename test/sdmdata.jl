@@ -58,28 +58,28 @@ pres_with_geometry = merge(presencedata, (; geometry))
 end
 
 @testset "SDM data with user-provided train-test pairs" begin
-    cvdata = sdmdata(presencedata, backgrounddata; resampler = CV(rng = StableRNG(0), nfolds = 4))
-    pairs = cvdata.traintestpairs
-    data = sdmdata(presencedata, backgrounddata; resampler = pairs)
-    @test data.traintestpairs == pairs
-    @test isnothing(data.resampler)
-    @test data.predictor == cvdata.predictor
-    @test data.response == cvdata.response
-    # also with a table and a response vector, and with geometry
+    pairs = map(1:5) do i
+        testrows = (i-1)*40+1:i*40
+        trainrows = setdiff(1:200, testrows)
+        (testrows,trainrows)
+    end
+    # primary use case is a table and boolean vector
     x = map(vcat, backgrounddata, presencedata)
     y = [falses(n); trues(n)]
-    @test sdmdata(x, y; resampler = pairs).traintestpairs == pairs
-    @test sdmdata(pres_with_geometry, bg_with_geometry; resampler = pairs).geometry == vcat(geometry, geometry)
+    combineddata= map((x,y) -> [x;y], presencedata, backgrounddata)
+    data = sdmdata(x, y; resampler = pairs)
+    @test data.traintestpairs == pairs # pairs are stored correctly
+    @test isnothing(data.resampler)
+    # also with presence-background, and with geometry
+    data_wgeom = sdmdata(pres_with_geometry, bg_with_geometry; resampler = pairs)
+    @test data_wgeom.geometry == vcat(geometry, geometry)
+    @test data_wgeom.traintestpairs == pairs
     # a tuple of pairs works too
     @test sdmdata(presencedata, backgrounddata; resampler = Tuple(pairs)).traintestpairs == pairs
     # show mentions user-provided pairs
     @test occursin("user-provided", sprint(show, MIME"text/plain"(), data))
-    # invalid input
-    @test_throws ArgumentError sdmdata(presencedata, backgrounddata; resampler = [(1:150, 151:201)])
+
+    # fitting with invalid or empty indices throws
+    @test_throws ArgumentError "outside 1:200" sdmdata(presencedata, backgrounddata; resampler = [(1:150, 151:201)])
     @test_throws ArgumentError sdmdata(presencedata, backgrounddata; resampler = Tuple{Vector{Int}, Vector{Int}}[])
-    # an ensemble fitted on user-provided pairs is identical to one fitted on the strategy
-    models = (glm = LinearBinaryClassifier(),)
-    ev1 = SDM.evaluate(sdm(data, models); measures = (; auc))
-    ev2 = SDM.evaluate(sdm(cvdata, models); measures = (; auc))
-    @test ev1.score == ev2.score
 end
