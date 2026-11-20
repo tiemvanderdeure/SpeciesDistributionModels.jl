@@ -7,20 +7,30 @@
         maxnet = MaxnetBinaryClassifier()
     )
 
-    ensemble = sdm(data, models;
-        threaded = false
-    )
+    for threaded in (false, true)
+        @testset "fit threaded: $threaded" begin
+            ensemble = sdm(data, models; threaded)
 
-    @test ensemble isa SDM.SDMensemble
-    @test ensemble[1] === ensemble[1,1] === ensemble[model = At(:rf), fold = At(1)]
-    @test ensemble[1] isa Machine
+            @test ensemble isa SDM.SDMensemble
+            @test ensemble[1] === ensemble[1,1] === ensemble[model = At(:rf), fold = At(1)]
+            @test ensemble[1] isa Machine
 
-    @test !DimensionalData.isordered(dims(ensemble, :model))
-    @test all(hasdim(ensemble, (:model, :fold)))
-    @test isequal(lookup(ensemble, :model), collect(keys(models)))
+            @test !DimensionalData.isordered(dims(ensemble, :model))
+            @test all(hasdim(ensemble, (:model, :fold)))
+            @test isequal(lookup(ensemble, :model), collect(keys(models)))
 
-    @test isequal(SDM.models(ensemble), collect(models))
-    @test SDM.models(ensemble) isa DimVector
+            @test isequal(SDM.models(ensemble), collect(models))
+            @test SDM.models(ensemble) isa DimVector
+        end
+    end
+
+    # each machine is trained on the training rows of its own fold
+    for threaded in (false, true)
+        e = sdm(data, models; threaded)
+        for m in lookup(e, :model), f in lookup(e, :fold)
+            @test e[model = At(m), fold = At(f)].old_rows == data.traintestpairs[f][1]
+        end
+    end
 end
 
 ensemble = sdm(data, (; lm = LinearBinaryClassifier()))
