@@ -43,11 +43,11 @@ using CairoMakie
 Rasters.rplot(bio_aus)
 ```
 
-![](gtybvxs.png){width=600px height=450px}
+![](hsvutok.png){width=600px height=450px}
 
 ## Occurrence data {#Occurrence-data}
 
-Next, we use [GBIF2.jl](https://github.com/rafaqz/GBIF2.jl) to download occurrence records for this species. We use the [thin](/api#SpeciesDistributionModels.thin) function in this package to weed out occurrences that are very close to each other, using a cut-off of 5km.
+Next, we use [GBIF2.jl](https://github.com/rafaqz/GBIF2.jl) to download occurrence records for this species. We use the [`thin`](/api#SpeciesDistributionModels.thin) function in this package to weed out occurrences that are very close to each other, using a cut-off of 5km.
 
 ```julia
 using GBIF2, SpeciesDistributionModels
@@ -58,22 +58,22 @@ occurrences = thin(occurrences_raw.geometry, 5000)
 
 
 ```ansi
-1267-element Vector{Tuple{Float64, Float64}}:
+1228-element Vector{Tuple{Float64, Float64}}:
  (145.98298, -38.33349)
  (147.255219, -41.237844)
  (147.497946, -41.301006)
+ (145.19167, -37.41639)
  (146.35, -37.36667)
  (147.899871, -41.147461)
  (146.782197, -41.376415)
- (146.779808, -41.37551)
- (146.24194, -38.52083)
- (146.3125, -38.56111)
- (146.45583, -38.46889)
+ (146.19722, -38.56889)
+ (146.30667, -38.56472)
+ (146.30333, -38.57611)
  ⋮
+ (147.823221, -41.164518)
  (146.634191, -42.309965)
  (147.970709, -41.134905)
  (147.985049, -41.145683)
- (147.795927, -41.204164)
  (145.791172, -41.193094)
  (145.30611, -37.52194)
  (146.16306, -37.82861)
@@ -98,11 +98,11 @@ scatter!(ax, bg_points; color = :grey)
 fig
 ```
 
-![](hfbycac.png){width=600px height=450px}
+![](vvwimlx.png){width=600px height=450px}
 
 ## Handling data {#Handling-data}
 
-SpeciesDistributionModels.jl has a [sdmdata](/api#SpeciesDistributionModels.sdmdata) function to handle input data. It takes tabular presence and background data as inputs, such as what is returned by `Rasters.extract` and `Rasters.sample`.
+SpeciesDistributionModels.jl has a [`sdmdata`](/api#SpeciesDistributionModels.sdmdata) function to handle input data. It takes tabular presence and background data as inputs, such as what is returned by `Rasters.extract` and `Rasters.sample`.
 
 ```julia
 using SpeciesDistributionModels
@@ -112,16 +112,16 @@ data = sdmdata(p_data, bg_data; resampler = CV(nfolds = 3))
 
 
 ```ansi
-SDMdata object with [0m[1m1250[22m presence points and [0m[1m500[22m absence points. 
+SDMdata object with [0m[1m1212[22m presence points and [0m[1m500[22m absence points. 
  
 [0m[1mResampling: [22m
 Data is divided into 3 folds using resampling strategy CV(nfolds = 3, …).
 ┌──────┬─────────┬────────┐
 │[1m fold [0m│[1m # train [0m│[1m # test [0m│
 ├──────┼─────────┼────────┤
-│    1 │    1166 │    584 │
-│    2 │    1167 │    583 │
-│    3 │    1167 │    583 │
+│    1 │    1141 │    571 │
+│    2 │    1141 │    571 │
+│    3 │    1142 │    570 │
 └──────┴─────────┴────────┘
 [0m[1mPredictor variables: [22m
 ┌───────┬────────────┬─────────┐
@@ -189,15 +189,15 @@ SDMevaluation with dimensions:
 
 Mean training performance:
  [38;5;209m↓[39m [38;5;32m→[39m        [38;5;32m:auc[39m      [38;5;32m:accuracy[39m
-  [38;5;209m:maxnet[39m  0.992683  0.991715
-  [38;5;209m:brt[39m     0.993891  0.993715
-  [38;5;209m:glm[39m     0.985387  0.990286
+  [38;5;209m:maxnet[39m  0.995544  0.993867
+  [38;5;209m:brt[39m     0.999961  0.997371
+  [38;5;209m:glm[39m     0.990169  0.992407
 
 Mean test performance:
  [38;5;209m↓[39m [38;5;32m→[39m        [38;5;32m:auc[39m      [38;5;32m:accuracy[39m
-  [38;5;209m:maxnet[39m  0.992634  0.992002
-  [38;5;209m:brt[39m     0.99391   0.993716
-  [38;5;209m:glm[39m     0.985328  0.990287
+  [38;5;209m:maxnet[39m  0.993476  0.993573
+  [38;5;209m:brt[39m     0.990024  0.99007
+  [38;5;209m:glm[39m     0.988878  0.99299
 ```
 
 
@@ -210,7 +210,7 @@ pred = SDM.predict(ensemble, bio_aus; reducer = mean)
 plot(pred; colorrange = (0,1))
 ```
 
-![](mzvpsnb.png){width=600px height=450px}
+![](uhtyvsm.png){width=600px height=450px}
 
 ## Understanding the model {#Understanding-the-model}
 
@@ -223,7 +223,7 @@ variable_importance(expl)
 
 
 ```ansi
-(bio1 = 0.2917428592905032, bio12 = 0.08045275850100682)
+(bio1 = 0.3075816935140941, bio12 = 0.0721555526957093)
 ```
 
 
@@ -233,4 +233,4 @@ We can also interactively plot the model explanation to get response curves.
 interactive_response_curves(expl)
 ```
 
-![](hhzjiys.png){width=600px height=450px}
+![](zxuqtfz.png){width=600px height=450px}
