@@ -104,25 +104,27 @@ function _sdmdata(
     # hack to allways shuffle CV
     resampler = resampler isa CV ? ConstructionBase.setproperties(resampler, (; shuffle = true)) : resampler
     traintestpairs = MLJBase.train_test_pairs(resampler, eachindex(y), X, y)
-    geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
-    X = Base.structdiff(X, NamedTuple{(:geometry,)})
-    SDMdata(X, y, geometries, traintestpairs, resampler)
+    _sdmdata(X, y, traintestpairs, resampler)
 end
-# user-supplied (train, test) row indices, e.g. precomputed spatial folds
 function _sdmdata(
     X::Tables.ColumnTable,
     y::BooleanCategorical,
     traintestpairs::MLJBase.TrainTestPairs,
+    resampler = nothing # default to nothing for user-provided pairs
 )
     isempty(traintestpairs) && throw(ArgumentError("`resampler` is an empty collection of train-test pairs"))
-    n = length(y)
-    for (i, (train, test)) in enumerate(traintestpairs)
-        all(r -> 1 <= r <= n, train) && all(r -> 1 <= r <= n, test) ||
-            throw(ArgumentError("Train-test pair $i has row indices outside 1:$n"))
+    # for user-provided, check if row numbers are valid
+    if isnothing(resampler) 
+        n = length(y)
+        for (i, (train, test)) in enumerate(traintestpairs)
+            all(r -> 1 <= r <= n, train) && all(r -> 1 <= r <= n, test) ||
+                throw(ArgumentError("User-provided train-test pair $i has row indices outside 1:$n"))
+        end
     end
+    # get geometries
     geometries = :geometry ∈ keys(X) ? Tables.getcolumn(X, :geometry) : nothing
     X = Base.structdiff(X, NamedTuple{(:geometry,)})
-    SDMdata(X, y, geometries, collect(traintestpairs), nothing)
+    SDMdata(X, y, geometries, collect(traintestpairs), resampler)
 end
 
 # Convert presence/absence data to predictor-response format. Used for SDMdata and in evaluate
