@@ -9,14 +9,14 @@ This package is not registered yet, but can easily be installed directly from Gi
 ## Core functionality
 A species distribution modelling workflow would typically consist of some data handling, then fitting a model, then evaluating it, and finally projecting to spatial data.
 
-In this package, the main data handling tool is the [sdmdata](@ref) function, which takes two Tables.jl-compatible data objects (e.g. DataFrames) as input and returns an `SDMdata` object. You can also specify a resampling strategy or select a subset of variables in this step.
+In this package, the main data handling tool is the [`sdmdata`](@ref) function, which takes two Tables.jl-compatible data objects (e.g. DataFrames) as input and returns an `SDMdata` object. You can also specify a resampling strategy or select a subset of variables in this step.
 
-Next, this object and a `NamedTuple` of models is passed to the [sdm](@ref) function to fit the models. The models can be any object that implements the MLJ interface and is compatible with binary categorical data. See the [MLJ model registry](https://juliaai.github.io/MLJ.jl/dev/model_browser/#Classification) for a list of available models.
+Next, this object and a `NamedTuple` of models is passed to the [`sdm`](@ref) function to fit the models. The models can be any object that implements the MLJ interface and is compatible with binary categorical data. See the [MLJ model registry](https://juliaai.github.io/MLJ.jl/dev/model_browser/#Classification) for a list of available models.
 
 A fit ensemble can then be passed to functions like [`SpeciesDistributionModels.evaluate`](@ref) and [`SpeciesDistributionModels.predict`](@ref).
 
 ## Dimensional types
-Most main objects in this package are built on DimensionalData.jl. [sdm](@ref) returns an [SDMensemble](@ref), which is an `AbstractDimArray` subtype with `:model` and `:fold` dimensions. It is thus easy to understand what `machine`s (from MLJ) each fit ensemble contains, or to subset an ensemble.
+Most main objects in this package are built on DimensionalData.jl. [`sdm`](@ref) returns an [`SDMensemble`](@ref), which is an `AbstractDimArray` subtype with `:model` and `:fold` dimensions. It is thus easy to understand what `machine`s (from MLJ) each fit ensemble contains, or to subset an ensemble.
 
 Similarly the (unexported, but public) function `SDM.evaluate` returns [`SDMevaluation`](@ref) and [`explain`](@ref) returns [`SDMexplanation`](@ref), which both are `AbstractDimStack` subtypes that preserve the same `:model` and `:fold` dims.
 

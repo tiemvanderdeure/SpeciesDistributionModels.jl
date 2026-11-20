@@ -22,7 +22,7 @@ Rasters.rplot(bio_aus)
 ```
 
 ## Occurrence data
-Next, we use [GBIF2.jl](https://github.com/rafaqz/GBIF2.jl) to download occurrence records for this species. We use the [thin](@ref) function in this package to weed out occurrences that are very close to each other, using a cut-off of 5km.
+Next, we use [GBIF2.jl](https://github.com/rafaqz/GBIF2.jl) to download occurrence records for this species. We use the [`thin`](@ref) function in this package to weed out occurrences that are very close to each other, using a cut-off of 5km.
 
 ```@example test
 using GBIF2, SpeciesDistributionModels
@@ -47,7 +47,7 @@ fig
 ```
 
 ## Handling data
-SpeciesDistributionModels.jl has a [sdmdata](@ref) function to handle input data. It takes tabular presence and background data as inputs, such as what is returned by `Rasters.extract` and `Rasters.sample`.
+SpeciesDistributionModels.jl has a [`sdmdata`](@ref) function to handle input data. It takes tabular presence and background data as inputs, such as what is returned by `Rasters.extract` and `Rasters.sample`.
 
 ```@example test
 using SpeciesDistributionModels
