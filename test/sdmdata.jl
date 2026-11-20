@@ -80,7 +80,7 @@ end
     @test occursin("user-provided", sprint(show, MIME"text/plain"(), data))
 
     # fitting with invalid or empty indices throws
-    if VERSION >= v"1.13"
+    @static if VERSION >= v"1.13" # Drop whenever the lts is > 1.13
         @test_throws ArgumentError "outside 1:200" sdmdata(presencedata, backgrounddata; resampler = [(1:150, 151:201)])
     else
         @test_throws ArgumentError sdmdata(presencedata, backgrounddata; resampler = [(1:150, 151:201)])
