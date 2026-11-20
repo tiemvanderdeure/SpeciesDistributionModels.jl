@@ -56,3 +56,34 @@ pres_with_geometry = merge(presencedata, (; geometry))
         end
     end
 end
+
+@testset "SDM data with user-provided train-test pairs" begin
+    pairs = map(1:5) do i
+        testrows = (i-1)*40+1:i*40
+        trainrows = setdiff(1:200, testrows)
+        (testrows,trainrows)
+    end
+    # primary use case is a table and boolean vector
+    x = map(vcat, backgrounddata, presencedata)
+    y = [falses(n); trues(n)]
+    combineddata= map((x,y) -> [x;y], presencedata, backgrounddata)
+    data = sdmdata(x, y; resampler = pairs)
+    @test data.traintestpairs == pairs # pairs are stored correctly
+    @test isnothing(data.resampler)
+    # also with presence-background, and with geometry
+    data_wgeom = sdmdata(pres_with_geometry, bg_with_geometry; resampler = pairs)
+    @test data_wgeom.geometry == vcat(geometry, geometry)
+    @test data_wgeom.traintestpairs == pairs
+    # a tuple of pairs works too
+    @test sdmdata(presencedata, backgrounddata; resampler = Tuple(pairs)).traintestpairs == pairs
+    # show mentions user-provided pairs
+    @test occursin("user-provided", sprint(show, MIME"text/plain"(), data))
+
+    # fitting with invalid or empty indices throws
+    @static if VERSION >= v"1.13" # Drop whenever the lts is > 1.13
+        @test_throws ArgumentError "outside 1:200" sdmdata(presencedata, backgrounddata; resampler = [(1:150, 151:201)])
+    else
+        @test_throws ArgumentError sdmdata(presencedata, backgrounddata; resampler = [(1:150, 151:201)])
+    end
+    @test_throws ArgumentError sdmdata(presencedata, backgrounddata; resampler = Tuple{Vector{Int}, Vector{Int}}[])
+end

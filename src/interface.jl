@@ -8,8 +8,11 @@ where `false` represents absence and `true` represents presence.
 
 ## Keywords
 - `resampler`: The resampling strategy to be used. Should be a `MLJBase.ResamplingStrategy`,
-    or a `Vector` of `Tuple`s with the form `(train, test)`. Defaults to `NoResampling()`.
+    or a `Vector` of `Tuple`s with the form `(train, test)`, where `train` and `test` are
+    row indices. Defaults to `NoResampling()`.
     If `resampler` is a `CV`, `shuffle` is internally set to `true`.
+    When providing `(train, test)` tuples together with `presences` and `absences`, note that
+    rows are ordered with all absences first, followed by all presences.
 - `predictors`: a `Tuple` of `Symbols` with the names of the predictor variables to be used.
     By default, all predictor variables in `X`, or all predictor variables in both
     `presences` and `absences` are used.
